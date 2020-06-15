@@ -5,7 +5,7 @@ import Html exposing (div, text)
 
 import Json.Encode as Encode
 
-port testPort : Encode.Value -> Cmd msg
+port renderGraph : String -> Cmd msg
 
 type alias Msg = Int
 
@@ -14,6 +14,10 @@ type alias Model =
   , foo: String
   }
 
+dotGraph = """digraph G {
+  From -> Elm;
+}
+"""
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update _ model = (model, Cmd.none)
@@ -25,7 +29,7 @@ type alias Flags = Int --Decode.Value
 
 
 init : Flags -> (Model, Cmd Msg)
-init n = ({ woo = n, foo = "foo" }, Cmd.none)
+init n = ({ woo = n, foo = "foo" }, renderGraph dotGraph)
 
 view : Model -> Html.Html Msg
 view model =

@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <title>GraphViz using Elm</title>
-    <script src="/wasm-index.js"></script>
-    <script src="/elm-viz.js"></script>
+    <script src="wasm-index.js"></script>
+    <script src="elm-viz.js"></script>
     <script>
         var hpccWasm = window["@hpcc-js/wasm"];
     </script>
@@ -16,23 +16,16 @@
     <div id="elm"></div>
 
     <script>
-        const dot = `
-            digraph G {
-                A -> {B;  C};
-            }
-        `;
 
 window.onload = () => {
-
-    // Asynchronous call to layout
-    hpccWasm.graphviz.layout(dot, "svg", "dot").then(svg => {
-        const div = document.getElementById("graph");
-        div.innerHTML = svg;
-    });
 
     const app = Elm.Viz.init({
         node: document.getElementById("elm"),
         flags: 23
+    });
+    app.ports.renderGraph.subscribe(dot => {
+        hpccWasm.graphviz.layout(dot, "svg", "dot")
+        .then(svg => document.getElementById("graph").innerHTML = svg);
     });
 };
 
