@@ -5,6 +5,8 @@ import Html exposing (div, text)
 
 import Json.Encode as Encode
 
+import Graph
+
 port renderGraph : String -> Cmd msg
 
 type alias Msg = Int
