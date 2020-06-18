@@ -23,12 +23,13 @@ window.onload = () => {
         node: document.getElementById("elm"),
         flags: 23
     });
-    app.ports.renderGraph.subscribe(dot => {
-        hpccWasm.graphviz.layout(dot, "svg", "dot")
+    app.ports.renderDot.subscribe(({id, data}) => {
+        hpccWasm.graphviz.layout(data, "svg", "dot")
         .then(svg => document.getElementById("graph").innerHTML = svg);
     });
 };
 
+window.linkTest = s => console.log(s);
     </script>
 
 </body>

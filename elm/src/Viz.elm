@@ -4,10 +4,31 @@ import Browser
 import Html exposing (div, text)
 
 import Json.Encode as Encode
+import Json.Decode as Decode
 
 import Graph
 
-port renderGraph : String -> Cmd msg
+
+type alias RenderData =
+  { id: Int
+  , data: String -- outgoing dot or incoming svg
+  }
+
+renderDataDecoder : Decode.Decoder RenderData
+renderDataDecoder = 
+  Decode.map2 RenderData
+    (Decode.field "id"  Decode.int)
+    (Decode.field "data" Decode.string)
+
+encodeRenderData : RenderData -> Encode.Value
+encodeRenderData data = 
+  Encode.object
+    [ ("id", Encode.int data.id)
+    , ("data", Encode.string data.data)
+    ]
+
+port renderDot : Encode.Value -> Cmd msg
+port receiveGraph : String -> Cmd msg
 
 type alias Msg = Int
 
@@ -17,7 +38,11 @@ type alias Model =
   }
 
 dotGraph = """digraph G {
-  From -> Elm;
+  node [shape=box];
+  From [href="javascript:linkTest('woo!')"];
+
+  From -> Elm [style=dashed, arrowhead=none];
+  From -> another;
 }
 """
 
@@ -31,7 +56,7 @@ type alias Flags = Int --Decode.Value
 
 
 init : Flags -> (Model, Cmd Msg)
-init n = ({ woo = n, foo = "foo" }, renderGraph dotGraph)
+init n = ({ woo = n, foo = "foo" }, renderDot <| encodeRenderData { id = 0, data = dotGraph })
 
 view : Model -> Html.Html Msg
 view model =
