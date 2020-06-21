@@ -1,4 +1,5 @@
 module Graph exposing ( Graph(..), toDot,
+  defaultCommonProperties,
   Node(..), NodeProperties, defaultNodeProperties,
   Edge(..), EdgeProperties, defaultEdgeProperties,
   makeEdge,
@@ -10,45 +11,59 @@ type Graph = Graph (List Node) (List Edge)
 
 -- todo graph properties
 
-type alias NodeProperties =
+type alias CommonProperties = 
   { label: String
   , style: String
   , fillcolor: String 
   }
 
-defaultNodeProperties : NodeProperties
-defaultNodeProperties =
+defaultCommonProperties : CommonProperties
+defaultCommonProperties =
   { label = ""
   , style = ""
   , fillcolor = ""
   }
 
-nodePropertiesToStringList : NodeProperties -> List ( String, String )
-nodePropertiesToStringList props =
+commonPropertiesToStringList : CommonProperties -> List ( String, String )
+commonPropertiesToStringList props =
   [ ( "label", props.label )
   , ( "style", props.style )
   , ( "fillcolor", props.fillcolor )
   ]
 
+
+type alias NodeProperties =
+  { common: CommonProperties
+  }
+
+defaultNodeProperties : NodeProperties
+defaultNodeProperties =
+  { common = defaultCommonProperties
+  }
+
+nodePropertiesToStringList : NodeProperties -> List ( String, String )
+nodePropertiesToStringList props =
+  commonPropertiesToStringList props.common ++
+  [
+  ]
+
 type Node = Node String NodeProperties
 
 type alias EdgeProperties = 
-  { label: String
-  , style: String -- might want list of strings
+  { common: CommonProperties
   , arrowhead: String
   }
 
 defaultEdgeProperties : EdgeProperties
 defaultEdgeProperties =
-  { label = ""
-  , style = ""
+  { common = defaultCommonProperties
   , arrowhead = ""
   }
 
 edgePropertiesToStringList : EdgeProperties -> List ( String, String )
 edgePropertiesToStringList props =
-  [ ( "label", props.label )
-  , ( "style", props.style )
+  commonPropertiesToStringList props.common ++
+  [ ( "arrowhead", props.arrowhead )
   ]
 
 type Edge = Edge Node Node EdgeProperties
@@ -75,21 +90,6 @@ propertiesToDot lst =
           ""
       else 
           "[" ++ contents ++ "]"
-
-a : Node
-a = Node "A" defaultNodeProperties
-
-b : Node
-b = Node "B"
-  { defaultNodeProperties
-  | label = "this is B!"
-  }
-
-testedge : Edge
-testedge = Edge a b
-  { defaultEdgeProperties
-  | label = "test"
-  }
 
 -- easy to paste into repl version
 {-
