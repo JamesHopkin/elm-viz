@@ -108,8 +108,8 @@ toDot graph =
             Node id props ->
               let
                 suffix = props
-                |> nodePropertiesToStringList
-                |> propertiestoDot
+                  |> nodePropertiesToStringList
+                  |> propertiesToDot
               in
                 id ++ suffix ++ ";"
 
@@ -119,10 +119,10 @@ toDot graph =
             Edge (Node fromId _) (Node toId _) _ -> fromId ++ " -> " ++ toId 
 
         lines = 
-          "digraph G {"  ::
-          List.map renderNode nodes ::
-          List.map renderEdge edges ::
-          "}" 
+          "digraph G {" ::
+            List.map renderNode nodes ++
+            List.map renderEdge edges ++
+            ["}"]
       in
         String.join "\n" lines
 
