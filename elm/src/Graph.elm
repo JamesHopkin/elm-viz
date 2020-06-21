@@ -13,18 +13,21 @@ type Graph = Graph (List Node) (List Edge)
 type alias NodeProperties =
   { label: String
   , style: String
+  , fillcolor: String 
   }
 
 defaultNodeProperties : NodeProperties
 defaultNodeProperties =
   { label = ""
   , style = ""
+  , fillcolor = ""
   }
 
 nodePropertiesToStringList : NodeProperties -> List ( String, String )
 nodePropertiesToStringList props =
   [ ( "label", props.label )
   , ( "style", props.style )
+  , ( "fillcolor", props.fillcolor )
   ]
 
 type Node = Node String NodeProperties
@@ -116,10 +119,10 @@ toDot graph =
             Edge (Node fromId _) (Node toId _) _ -> fromId ++ " -> " ++ toId 
 
         lines = 
-          [ "digraph G {" ] ++
-          (List.map renderNode nodes) ++
-          (List.map renderEdge edges) ++
-          [ "}" ]
+          "digraph G {"  ::
+          List.map renderNode nodes ::
+          List.map renderEdge edges ::
+          "}" 
       in
         String.join "\n" lines
 
