@@ -25,7 +25,10 @@ window.onload = () => {
     });
     app.ports.renderDot.subscribe(({id, data}) => {
         hpccWasm.graphviz.layout(data, "svg", "dot")
-        .then(svg => document.getElementById("graph").innerHTML = svg);
+        .then(svg => {
+            document.getElementById("graph").innerHTML = svg;
+            app.ports.notifyGraphRendered.send(null);
+        });
     });
 };
 

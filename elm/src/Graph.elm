@@ -1,6 +1,10 @@
 module Graph exposing ( Graph(..), toDot,
   Node(..), NodeProperties, defaultNodeProperties,
-  Edge(..), EdgeProperties, defaultEdgeProperties )
+  Edge(..), EdgeProperties, defaultEdgeProperties,
+  makeEdge,
+  makeGraph )
+
+import Dict exposing ( Dict )
 
 type Graph = Graph (List Node) (List Edge)
 
@@ -103,3 +107,39 @@ toDot graph =
   --  From -> another;
   --}
   --"""
+
+makeEdge : Dict String Node -> String -> String -> EdgeProperties -> Maybe Edge
+makeEdge nodeDict fromId toId props =
+  let
+    maybeFrom = Dict.get fromId nodeDict
+    maybeTo = Dict.get toId nodeDict
+  in
+    case ( maybeFrom, maybeTo ) of
+      ( Just from, Just to ) -> Just ( Edge from to props )
+      _ -> Nothing
+
+makeNodesDict : List ( String, NodeProperties ) -> Dict String Node
+makeNodesDict nodes =
+  let
+    makeEntry ( id, props ) = ( id, Node id props )
+  in
+    Dict.fromList (List.map makeEntry nodes)
+
+
+makeGraph : List Node -> List ( String, String, EdgeProperties ) -> Graph
+makeGraph nodes edgeDefs =
+  let
+    nodeToIdAndNode : Node -> ( String, Node )
+    nodeToIdAndNode node =
+      case node of
+        Node id _ -> ( id, node )
+
+    nodesDict : Dict String Node
+    nodesDict = Dict.fromList <| List.map nodeToIdAndNode nodes
+    edgeFromDef : ( String, String, EdgeProperties ) -> Maybe Edge
+    edgeFromDef ( fromId, toId, props ) = makeEdge nodesDict fromId toId props
+
+    edges = List.map edgeFromDef edgeDefs
+
+  in
+    Graph nodes (List.filterMap identity edges)
