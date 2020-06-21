@@ -60,6 +60,18 @@ edgeToDot e =
   case e of
     Edge (Node fromId _) (Node toId _) _ -> fromId ++ " -> " ++ toId 
 
+propertiesToDot : List ( String, String ) -> String
+propertiesToDot lst =
+  let
+      newLst = List.filter (\(_,y) -> y /= "") lst
+      contents = newLst  
+        |> List.map (\(x,y) -> "\"" ++ x ++ "\" = \"" ++ y ++ "\"") 
+        |> String.join " , "        
+  in
+      if List.isEmpty newLst then
+          ""
+      else 
+          "[" ++ contents ++ "]"
 
 a : Node
 a = Node "A" defaultNodeProperties
@@ -92,9 +104,9 @@ toDot graph =
           case node of
             Node id props ->
               let
-                suffix = case props.label of 
-                  "" -> ""
-                  _ -> " [label=\"" ++ props.label ++ "\"]"
+                suffix = props
+                |> nodePropertiesToStringList
+                |> propertiestoDot
               in
                 id ++ suffix ++ ";"
 
