@@ -21,6 +21,12 @@ defaultNodeProperties =
   , style = ""
   }
 
+nodePropertiesToStringList : NodeProperties -> List ( String, String )
+nodePropertiesToStringList props =
+  [ ( "label", props.label )
+  , ( "style", props.style )
+  ]
+
 type Node = Node String NodeProperties
 
 type alias EdgeProperties = 
@@ -35,6 +41,12 @@ defaultEdgeProperties =
   , style = ""
   , arrowhead = ""
   }
+
+edgePropertiesToStringList : EdgeProperties -> List ( String, String )
+edgePropertiesToStringList props =
+  [ ( "label", props.label )
+  , ( "style", props.style )
+  ]
 
 type Edge = Edge Node Node EdgeProperties
 
