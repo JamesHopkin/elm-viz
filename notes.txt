@@ -1,0 +1,70 @@
+
+
+
+
+Eventually need to resolve rules, cancel out etc.
+
+
+
+Idea for update:
+	do moves:
+		possible orders:
+			some order of move/shift/controller
+			whether to each verb for each item or vice versa
+
+
+work out how to tag items each 
+
+
+
+'Axis' idea: treat row or column with particular location at 0 as array, but also with:
+	goes in either direction
+
+Pattern for getting new grid?
+	equivalent of:
+		class Axis { 
+			void updateSlice(...)
+			{
+				grid->modify();
+			}
+			Grid* grid; /* and coords */
+		}
+
+Ah, updated axis will actually contain whole new grid
+To work on different axis, or to do other grid access, need to get grid from slice 
+
+Need to chain, accesses need to use latest grid. Experiment with slice of array?
+
+							-- origin  size dir 
+type Axis el = Axis (Grid el) Int Int Int Boolean
+
+-- negative size for reverse direction
+
+map : (el -> el) -> Axis el -> Axis el
+
+
+
+Sketch algorithm using Axis type first?
+
+	- make axis for item that is move based on its location and direction
+	- in +ve direction, look for chain of pushes, possibly ending in stop
+	- in -ve direction, check for current loc being stop, then look for chain of pulls
+
+could push things on the way back out of recursive check
+would need to pass new axis (including grid) back
+
+need simple array version to test first implementation: if pushing, set [0] to empty, [1] to
+contents of [0]. No point trying to make it single operation: individual steps will get more
+complex.
+
+
+eventually push will have to push all push things on a tile if there are multiple 
+
+Thinking of making Axis forward/back never return Nothing, just as if it's a Push
+	- Axis.map will work (origin to edge of grid)
+	
+	- would need a special verb in case ever need to detect edge (like boundary tiles contain both a
+	  push and a boundary item)
+
+
+Probably have axisGet and axisGetAt, to make getting at origin read well (forwardTo?)
