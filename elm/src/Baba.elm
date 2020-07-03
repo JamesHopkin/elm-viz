@@ -54,51 +54,10 @@ verbFromOccupant s = case s of
 
 type alias Location = LinkedGrid.Location Tile
 
-surrounding : 
-  (Location -> Maybe Location)
-  -> (Location -> Maybe Location)
-  -> (Tile -> Tile -> Tile -> acc -> acc)
-  -> acc
-  -> Location
-  -> acc
-surrounding getPrev getNext fn a location =
-  let
-    impl = surrounding getPrev getNext fn a
-  in
-    case (getPrev location, getNext location) of
-      ( Just prevLoc, Just nextLoc ) -> fn
-        (LinkedGrid.getContents prevLoc)
-        (LinkedGrid.getContents location)
-        (LinkedGrid.getContents nextLoc)
-        (impl nextLoc)
 
-      ( Nothing, Just nextLoc ) -> impl nextLoc
-
-      _ -> a
 
 isText = Char.isAlpha
 isVerb = Char.isUpper
-
-lookForRulesInRow :
-  (Location -> Maybe Location)
-  -> (Location -> Maybe Location)
-  -> Location
-  -> List Rule
-lookForRulesInRow prev next row = 
-  let
-    impl x y z a =
-      if not (isText x && not (isVerb x) && isText z) then a
-      else 
-        case y of
-          '=' ->
-            if isVerb z then  Is x (verbFromOccupant z) :: a
-            else              Becomes x z :: a
-          '<' ->
-            if isVerb z then  a
-            else              Has x z :: a
-          _ -> a
-  in
-    surrounding prev next impl [] row
 
 
 testRow1 = ['·', 'a', '=', 'P', '·']
@@ -106,41 +65,10 @@ testRow2 = ['b', '=', 'c']
 testRow3 = ['·', '·', '<']
 testRow4 = ['·', '·', 'd']
 
-fold :
-  (Location -> Maybe Location)
-  -> (Location -> acc -> acc)
-  -> Location
-  -> acc -> acc
-fold nextFn f loc acc =
-  let
-    soFar = f loc acc
-  in
-    case nextFn loc of
-      Just next -> fold nextFn f next soFar
-      _ -> soFar
 
 testGrid = LinkedGrid.fromLists '·' 5 5 [[], testRow1, testRow2, testRow3, testRow4]
 
 testGridDebugStr = LinkedGrid.toDebugString String.fromChar testGrid
-
-lookForRules : LinkedGrid.LinkedGrid Tile -> List Rule
-lookForRules grid =
-  case LinkedGrid.at 0 0 grid of
-    Just origin ->
-      let
-        rowRules : List Rule
-        rowRules = fold LinkedGrid.below
-          (lookForRulesInRow LinkedGrid.left LinkedGrid.right >> (++))
-          origin []
-
-        columnRules : List Rule
-        columnRules = fold LinkedGrid.right
-          (lookForRulesInRow LinkedGrid.above LinkedGrid.below >> (++))
-          origin []
-
-      in
-        rowRules ++ columnRules
-    _ -> []
 
 
 --rulesTestResult =
@@ -264,34 +192,21 @@ lookForRulesOnAxis axis =
     surroundingUsingAxis impl [] axis
 
 
---fold2 :
---  (LinkedGrid.Location Tile -> Maybe (LinkedGrid.Location Tile))
---  -> (LinkedGrid.Location Tile -> (List Rule) -> (List Rule))
---  -> LinkedGrid.Location Tile
---  -> (List Rule) -> (List Rule)
---fold2 nextFn f loc acc =
---  let
---    soFar = f loc acc
---  in
---    case nextFn loc of
---      Just next -> fold2 nextFn f next soFar
---      _ -> soFar
-
-fold2 :
+fold :
   (loc -> Maybe loc)
   -> (loc -> acc -> acc)
   -> loc
   -> acc -> acc
-fold2 nextFn f loc acc =
+fold nextFn f loc acc =
   let
     soFar = f loc acc
   in
     case nextFn loc of
-      Just next -> fold2 nextFn f next soFar
+      Just next -> fold nextFn f next soFar
       _ -> soFar
 
-lookForRules2 : LinkedGrid.LinkedGrid Tile -> List Rule
-lookForRules2 grid =
+lookForRules : LinkedGrid.LinkedGrid Tile -> List Rule
+lookForRules grid =
   case LinkedGrid.at 0 0 grid of
     Just origin ->
       let
@@ -304,7 +219,7 @@ lookForRules2 grid =
             prependRow : LinkedGrid.Location Tile -> List Rule -> List Rule
             prependRow = rowFunc >> (++)
           in
-            fold2 LinkedGrid.below prependRow origin []
+            fold LinkedGrid.below prependRow origin []
 
 
         columnRules : List Rule
@@ -312,7 +227,7 @@ lookForRules2 grid =
           let
             columnFunc loc = lookForRulesOnAxis <| LinkedGrid.makeAxis loc Down
           in
-            fold2 LinkedGrid.right (columnFunc >> (++)) origin []
+            fold LinkedGrid.right (columnFunc >> (++)) origin []
 
       in
         rowRules ++ columnRules
@@ -320,7 +235,7 @@ lookForRules2 grid =
 
 rulesTestResult =
     let
-      ruleStrings = List.map ruleDebugString (lookForRules2 testGrid)
+      ruleStrings = List.map ruleDebugString (lookForRules testGrid)
     in 
       String.join "\n" ruleStrings
 
