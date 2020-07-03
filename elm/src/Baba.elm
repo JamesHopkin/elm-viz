@@ -1,10 +1,11 @@
-module Baba exposing ( testResult, testGridDebugStr, rulesTestResult, modifiedGridResultStrings )
+module Baba exposing ( testResult, testGridDebugStr, rulesTestResult, modifiedGridResultStrings,
+    movesTestGridString, movesTestGridStep1String, movesTestGridStep2String )
 
 import LinkedGrid exposing ( Direction (..) )
 
 
 type alias Object = Char
-type alias Tile = Char
+type alias Cell = Char
 emptySquare = ' '
 
 type Rule
@@ -52,7 +53,7 @@ verbFromOccupant s = case s of
   'F' -> Float_
   _ -> You
 
-type alias Location = LinkedGrid.Location Tile
+type alias Location = LinkedGrid.Location Cell
 
 
 
@@ -63,12 +64,31 @@ isVerb = Char.isUpper
 testRow1 = ['·', 'a', '=', 'P', '·']
 testRow2 = ['b', '=', 'c']
 testRow3 = ['·', '·', '<']
-testRow4 = ['·', '·', 'd']
-
+testRow4 = ['·', '·', 'd', '→']
 
 testGrid = LinkedGrid.fromLists '·' 5 5 [[], testRow1, testRow2, testRow3, testRow4]
 
-testGridDebugStr = LinkedGrid.toDebugString String.fromChar testGrid
+movesTestGrid = LinkedGrid.fromLists '·' 7 7
+  (List.map String.toList
+    [ ""
+    , "···P"
+    , "···↑"
+    , "xP←·→PS"
+    , "···↓"
+    , "···P"
+    ]
+  )
+
+movesTestGridStep1 = doMovesAndPushes movesTestGrid
+movesTestGridStep2 = doMovesAndPushes movesTestGridStep1
+
+gridToStr = LinkedGrid.toDebugString String.fromChar
+
+testGridDebugStr = gridToStr testGrid
+
+movesTestGridString = gridToStr movesTestGrid
+movesTestGridStep1String = gridToStr movesTestGridStep1
+movesTestGridStep2String = gridToStr movesTestGridStep2
 
 
 --rulesTestResult =
@@ -98,43 +118,65 @@ moveAndPush axisWithMoveAtOrigin =
           case LinkedGrid.axisForward 1 prevAxis of
             Just axis ->
               let
+                -- look what's in the cell
                 contents = LinkedGrid.axisGet axis
               in
+                -- found a(nother) push Cell, keep going
                 if isPush contents then impl axis
+
+                -- found stop, so nothing moves
                 else if isStop contents then Nothing
+
+                -- done searching (calling code will do move)
                 else Just axis
-            _ -> Nothing -- treat boundary as stop
+
+            -- treat boundary as stop
+            _ -> Nothing
       in
         Maybe.map doPush result
 
   in
     impl axisWithMoveAtOrigin
-      |> Maybe.map (LinkedGrid.axisSet '.')
+      |> Maybe.map (LinkedGrid.axisSet '·')
 
---doMovesAndPushes : (LinkedGrid Char) -> (LinkedGrid Char)
---doMovesAndPushes state =
---  let
---    -- find moves
---    moveLocations : List ( Int, Int )
---    moveLocations =
---      String.toList state
---        |> List.indexedMap (\n -> \el -> ( n, el ))
---        |> List.filter (\(_, el) -> isMove el)
---        |> List.map Tuple.first 
+doMovesAndPushes : (LinkedGrid.LinkedGrid Char) -> (LinkedGrid.LinkedGrid Char)
+doMovesAndPushes initialGrid =
+  let
+    -- find moves
+    moveCoords : List ( Int, Int, Direction )
+    moveCoords =
+      let
+        addIfMove loc acc =
+          let
+            contents = LinkedGrid.getContents loc
+            direction = moveDir contents
 
---    impl n str =
---      case move (Axis str n) of
---        Just (Axis modified _) -> modified
---        _ -> str
---              --if String.length result == String.length str then impl (n + 1) str
---              --else "Error! " ++ result ++ " vs. " ++ str
+            ( x, y ) = LinkedGrid.getLocationCoordinates loc
+          in
+            Maybe.map (\dir -> ( x, y, dir ) :: acc) direction
+              |> Maybe.withDefault acc
+      in
+        LinkedGrid.foldLocations addIfMove [] initialGrid
 
---  in
---    List.foldr impl state moveIndices
+    impl ( x, y, direction ) grid =
+      let
+        axis = LinkedGrid.at x y grid
+          |> Maybe.map (\loc -> LinkedGrid.makeAxis loc direction)
+      in
+        case Maybe.andThen moveAndPush axis of
+          Just updatedAxis -> LinkedGrid.gridFromAxis updatedAxis
+          _ -> grid
+              --if String.length result == String.length str then impl (n + 1) str
+              --else "Error! " ++ result ++ " vs. " ++ str
+
+  in
+    List.foldr impl initialGrid moveCoords
+
+movedGrid = doMovesAndPushes testGrid
 
 testAxis direction = Maybe.map
   (\loc -> LinkedGrid.makeAxis loc direction)
-  (LinkedGrid.at 1 1 testGrid)
+  (LinkedGrid.at 1 1 movedGrid)
 
 maybeAxisToString axis = 
   axis
@@ -174,7 +216,7 @@ surroundingUsingAxis fn a axis =
 
       _ -> a
 
-lookForRulesOnAxis : LinkedGrid.Axis Tile -> List Rule
+lookForRulesOnAxis : LinkedGrid.Axis Cell -> List Rule
 lookForRulesOnAxis axis = 
   let
     impl x y z a =
@@ -205,7 +247,7 @@ fold nextFn f loc acc =
       Just next -> fold nextFn f next soFar
       _ -> soFar
 
-lookForRules : LinkedGrid.LinkedGrid Tile -> List Rule
+lookForRules : LinkedGrid.LinkedGrid Cell -> List Rule
 lookForRules grid =
   case LinkedGrid.at 0 0 grid of
     Just origin ->
@@ -213,10 +255,10 @@ lookForRules grid =
         rowRules : List Rule
         rowRules = 
           let
-            rowFunc : LinkedGrid.Location Tile -> List Rule
+            rowFunc : LinkedGrid.Location Cell -> List Rule
             rowFunc loc = lookForRulesOnAxis <| LinkedGrid.makeAxis loc Right
 
-            prependRow : LinkedGrid.Location Tile -> List Rule -> List Rule
+            prependRow : LinkedGrid.Location Cell -> List Rule -> List Rule
             prependRow = rowFunc >> (++)
           in
             fold LinkedGrid.below prependRow origin []
@@ -269,7 +311,18 @@ axisForward m axis = case axis of
 axisOriginalString axis = case axis of
   Axis s _ -> s
 
-isMove c = c == 'M'
+moveDir c = case c of
+  '←' -> Just Left
+  '↑' -> Just Up
+  '→' -> Just Right
+  '↓' -> Just Down
+  _ -> Nothing
+
+
+isMove c = case moveDir c of
+  Nothing -> False
+  _ -> True
+
 isPush c = c == 'P'
 isStop c = c == 'S'
 
@@ -316,5 +369,5 @@ doMoves state =
     List.foldr impl state moveIndices
 
 
-testCases = [ "..M...", "..MPPP..", ".M.M...", ".MP.", "..MS", "MPPSP..", "..MS..MMM.." ]
+testCases = [ "..→...", "..→PPP..", ".→.→...", ".→P.", "..→S", "→PPSP..", "..→S..→→→.." ]
 testResult = List.map (\s -> s ++ " -> " ++ (doMoves s)) testCases |> String.join "\n"

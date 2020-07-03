@@ -1,4 +1,5 @@
-module LinkedGrid exposing ( LinkedGrid, toDebugString, Location, foldLocations, make, Direction (..), Axis, fromLists, at, getContents, above, right, below, left,
+module LinkedGrid exposing ( LinkedGrid, toDebugString, Location, foldLocations, getLocationCoordinates,
+                          make, Direction (..), Axis, fromLists, at, getContents, above, right, below, left,
                           makeAxis, gridFromAxis, axisGetAt, axisGet, axisSetAt, axisSet, axisForward )
 
 import Array exposing ( Array )
@@ -20,7 +21,7 @@ foldRange f initial end =
   in
     impl (end - 1) initial 
 
-foldLocations : ((Location el) -> a -> a) -> a -> (LinkedGrid el) -> a
+foldLocations : (Location el -> a -> a) -> a -> LinkedGrid el -> a
 foldLocations f initial grid =
   let
     ( width, height ) = getDimensions grid 
@@ -125,6 +126,8 @@ left loc = case loc of
   Location grid x y ->
     if x == 0 then Nothing else Just (Location grid (x - 1) y)
 
+getLocationCoordinates loc = case loc of
+  Location _ x y -> ( x, y )
 -- 1d, using string instead of List Char:
 -- type Axis = Axis String Int
 

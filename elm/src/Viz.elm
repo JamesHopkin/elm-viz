@@ -111,6 +111,11 @@ view model =
         ]
       , tr []
           <| List.map (\s -> td [] [ pre [] [ text s ] ]) Baba.modifiedGridResultStrings
+      , tr []
+        [ td [] [ pre [] [ text Baba.movesTestGridString ] ]
+        , td [] [ pre [] [ text Baba.movesTestGridStep1String ] ]
+        , td [] [ pre [] [ text Baba.movesTestGridStep2String ] ]
+        ]
       ]
     , text <| "Graph state: " ++ (
       case model.state of
