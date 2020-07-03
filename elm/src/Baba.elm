@@ -3,9 +3,12 @@ module Baba exposing ( testResult, testGridDebugStr, rulesTestResult, modifiedGr
 
 import LinkedGrid exposing ( Direction (..) )
 
-
 type alias Object = Char
 type alias Cell = Char
+
+type alias Grid = LinkedGrid.LinkedGrid Cell
+type alias Axis = LinkedGrid.Axis Cell
+
 emptySquare = ' '
 
 type Rule
@@ -55,7 +58,27 @@ verbFromOccupant s = case s of
 
 type alias Location = LinkedGrid.Location Cell
 
+moveDir c = case c of
+  '←' -> Just Left
+  '↑' -> Just Up
+  '→' -> Just Right
+  '↓' -> Just Down
+  _ -> Nothing
 
+flipDir c = case c of
+  '←' -> Just '→'
+  '↑' -> Just '↓'
+  '→' -> Just '←'
+  '↓' -> Just '↑'
+  _ -> Nothing
+
+
+isMove c = case moveDir c of
+  Nothing -> False
+  _ -> True
+
+isPush c = c == 'P'
+isStop c = c == 'S'
 
 isText = Char.isAlpha
 isVerb = Char.isUpper
@@ -101,20 +124,43 @@ movesTestGridStep2String = gridToStr movesTestGridStep2
 -----------
 -- Axis tests
 
-moveAndPush : LinkedGrid.Axis Char -> Maybe (LinkedGrid.Axis Char)
+flipCellDirection : Axis -> Axis
+flipCellDirection loc =
+  let
+    result = loc
+      |> LinkedGrid.axisGet
+      |> flipDir
+      |> Maybe.map (\c -> LinkedGrid.axisSet c loc)
+      |> Maybe.map LinkedGrid.flipAxis
+      |> Maybe.withDefault loc
+
+    --dummy = Debug.log "flipCellDirection"
+    --  [LinkedGrid.axisGet loc, LinkedGrid.axisGet result] 
+  in
+    result
+
+moveAndPush : Axis -> Maybe (Axis)
 moveAndPush axisWithMoveAtOrigin =
   let
-    doPush : LinkedGrid.Axis Char -> LinkedGrid.Axis Char 
+    doPush : Axis -> Maybe Axis 
     doPush adjoiningAxis =
       LinkedGrid.axisSet (LinkedGrid.axisGetAt -1 adjoiningAxis) adjoiningAxis
         |> LinkedGrid.axisForward -1
-        |> Maybe.withDefault axisWithMoveAtOrigin -- should never use this default
 
-    impl : LinkedGrid.Axis Char -> Maybe (LinkedGrid.Axis Char)
-    impl prevAxis =
+    followPushes : Axis -> Maybe (Axis)
+    followPushes prevAxis =
       let
-        result : Maybe (LinkedGrid.Axis Char)
-        result = 
+        -- LOGGING --
+        --( x, y ) = LinkedGrid.axisOrigin prevAxis |> LinkedGrid.getLocationCoordinates
+        --dummy = Debug.log "followPushes"
+        --  [ String.fromChar <| LinkedGrid.axisGet prevAxis
+        --  , String.fromInt x
+        --  , String.fromInt y
+        --  ] 
+        -------------
+
+        pushChain : Maybe (Axis)
+        pushChain = 
           case LinkedGrid.axisForward 1 prevAxis of
             Just axis ->
               let
@@ -122,7 +168,7 @@ moveAndPush axisWithMoveAtOrigin =
                 contents = LinkedGrid.axisGet axis
               in
                 -- found a(nother) push Cell, keep going
-                if isPush contents then impl axis
+                if isPush contents then followPushes axis
 
                 -- found stop, so nothing moves
                 else if isStop contents then Nothing
@@ -133,13 +179,15 @@ moveAndPush axisWithMoveAtOrigin =
             -- treat boundary as stop
             _ -> Nothing
       in
-        Maybe.map doPush result
+        Maybe.andThen doPush pushChain
 
+    result = case followPushes axisWithMoveAtOrigin of
+      Nothing -> followPushes (flipCellDirection axisWithMoveAtOrigin)
+      updatedAxis -> updatedAxis
   in
-    impl axisWithMoveAtOrigin
-      |> Maybe.map (LinkedGrid.axisSet '·')
+    Maybe.map (LinkedGrid.axisSet '·') result
 
-doMovesAndPushes : (LinkedGrid.LinkedGrid Char) -> (LinkedGrid.LinkedGrid Char)
+doMovesAndPushes : Grid -> Grid
 doMovesAndPushes initialGrid =
   let
     -- find moves
@@ -216,7 +264,7 @@ surroundingUsingAxis fn a axis =
 
       _ -> a
 
-lookForRulesOnAxis : LinkedGrid.Axis Cell -> List Rule
+lookForRulesOnAxis : Axis -> List Rule
 lookForRulesOnAxis axis = 
   let
     impl x y z a =
@@ -247,7 +295,7 @@ fold nextFn f loc acc =
       Just next -> fold nextFn f next soFar
       _ -> soFar
 
-lookForRules : LinkedGrid.LinkedGrid Cell -> List Rule
+lookForRules : Grid -> List Rule
 lookForRules grid =
   case LinkedGrid.at 0 0 grid of
     Just origin ->
@@ -255,10 +303,10 @@ lookForRules grid =
         rowRules : List Rule
         rowRules = 
           let
-            rowFunc : LinkedGrid.Location Cell -> List Rule
+            rowFunc : Location -> List Rule
             rowFunc loc = lookForRulesOnAxis <| LinkedGrid.makeAxis loc Right
 
-            prependRow : LinkedGrid.Location Cell -> List Rule -> List Rule
+            prependRow : Location -> List Rule -> List Rule
             prependRow = rowFunc >> (++)
           in
             fold LinkedGrid.below prependRow origin []
@@ -285,10 +333,10 @@ rulesTestResult =
 -- 1D!
 
 
-type Axis = Axis String Int
+type Axis1D = Axis1D String Int
 
 axisGetAt m axis = case axis of
-  Axis s n ->
+  Axis1D s n ->
     s |> String.dropLeft (n + m)
       |> String.uncons
       |> Maybe.withDefault ( '!', "" )
@@ -296,35 +344,21 @@ axisGetAt m axis = case axis of
 axisGet = axisGetAt 0
 
 axisSetAt m char axis = case axis of
-  Axis s n ->
+  Axis1D s n ->
     let
       index = n + m
       left = String.left index s
       right = String.cons char <| String.dropLeft (index + 1) s
     in
-      Axis (left ++ right) n
+      Axis1D (left ++ right) n
 axisSet = axisSetAt 0
 
 axisForward m axis = case axis of
-  Axis s n -> Axis s (n + m)
+  Axis1D s n -> Axis1D s (n + m)
 
 axisOriginalString axis = case axis of
-  Axis s _ -> s
+  Axis1D s _ -> s
 
-moveDir c = case c of
-  '←' -> Just Left
-  '↑' -> Just Up
-  '→' -> Just Right
-  '↓' -> Just Down
-  _ -> Nothing
-
-
-isMove c = case moveDir c of
-  Nothing -> False
-  _ -> True
-
-isPush c = c == 'P'
-isStop c = c == 'S'
 
 move axisWithMoveAtOrigin =
   let
@@ -359,8 +393,8 @@ doMoves state =
         |> List.map Tuple.first 
 
     impl n str =
-      case move (Axis str n) of
-        Just (Axis modified _) -> modified
+      case move (Axis1D str n) of
+        Just (Axis1D modified _) -> modified
         _ -> str
               --if String.length result == String.length str then impl (n + 1) str
               --else "Error! " ++ result ++ " vs. " ++ str

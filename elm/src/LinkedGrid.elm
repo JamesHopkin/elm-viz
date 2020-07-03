@@ -1,6 +1,7 @@
 module LinkedGrid exposing ( LinkedGrid, toDebugString, Location, foldLocations, getLocationCoordinates,
-                          make, Direction (..), Axis, fromLists, at, getContents, above, right, below, left,
-                          makeAxis, gridFromAxis, axisGetAt, axisGet, axisSetAt, axisSet, axisForward )
+                          make, Direction (..),
+                          fromLists, at, getContents, setContents, above, right, below, left,
+                          Axis, makeAxis, gridFromAxis, axisOrigin, axisGetAt, axisGet, axisSetAt, axisSet, axisForward, flipAxis )
 
 import Array exposing ( Array )
 
@@ -170,6 +171,14 @@ axisForward offset axis = case axis of
     in
       Maybe.map (\loc -> Axis loc direction) (at newX newY grid)
 
+axisOrigin axis = case axis of
+  Axis location _ -> location
 
 gridFromAxis axis = case axis of
   Axis (Location grid _ _) _ -> grid
+
+flipAxis axis = case axis of
+  Axis location Up -> Axis location Down
+  Axis location Right -> Axis location Left
+  Axis location Down -> Axis location Up
+  Axis location Left -> Axis location Right
