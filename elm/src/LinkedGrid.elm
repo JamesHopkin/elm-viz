@@ -129,10 +129,7 @@ left loc = case loc of
 
 getLocationCoordinates loc = case loc of
   Location _ x y -> ( x, y )
--- 1d, using string instead of List Char:
--- type Axis = Axis String Int
 
--- how to do direction?
 type Direction = Up | Right | Down | Left
 type Axis el = Axis (Location el) Direction
 

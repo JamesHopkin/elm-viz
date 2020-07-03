@@ -1,15 +1,43 @@
-module Baba exposing ( testResult, testGridDebugStr, rulesTestResult, modifiedGridResultStrings,
+module Baba exposing ( testGridDebugStr, rulesTestResult, modifiedGridResultStrings,
     movesTestGridString, movesTestGridStep1String, movesTestGridStep2String )
 
 import LinkedGrid exposing ( Direction (..) )
 
 type alias Object = Char
-type alias Cell = Char
+type alias Cell = List Object
+type alias Location = LinkedGrid.Location Cell
 
 type alias Grid = LinkedGrid.LinkedGrid Cell
 type alias Axis = LinkedGrid.Axis Cell
 
-emptySquare = ' '
+emptyCell : Cell
+emptyCell = []
+
+-- char of arbitrary item at the moment
+cellDebugString cell = case cell of
+  first :: rest -> String.fromChar first
+  _ -> "·"
+
+addToCellAt offset object axis =
+  let
+    newContents = object :: (LinkedGrid.axisGetAt offset axis)
+  in
+    LinkedGrid.axisSet newContents axis
+addToCell = addToCellAt 0
+
+clearCellAt offset = LinkedGrid.axisSetAt offset []
+clearCell = clearCellAt 0
+
+tempGetFirst cell = case cell of
+  first :: rest -> first
+  _ -> '$' -- need to fix if these start coming out
+
+-- may need object IDs
+removeFromCell object axis =
+  let
+    newContents = List.filter ((/=) object) (LinkedGrid.axisGet axis)
+  in
+    LinkedGrid.axisSet newContents axis
 
 type Rule
   = Is Char Verb
@@ -56,8 +84,6 @@ verbFromOccupant s = case s of
   'F' -> Float_
   _ -> You
 
-type alias Location = LinkedGrid.Location Cell
-
 moveDir c = case c of
   '←' -> Just Left
   '↑' -> Just Up
@@ -73,26 +99,54 @@ flipDir c = case c of
   _ -> Nothing
 
 
-isMove c = case moveDir c of
-  Nothing -> False
-  _ -> True
+hasMove =  
+  let
+    isMove obj = case moveDir obj of
+      Nothing -> False
+      _ -> True
+  in
+    List.any isMove
 
-isPush c = c == 'P'
-isStop c = c == 'S'
+hasPush cell = List.member 'P' cell
+hasStop cell = List.member 'S' cell
 
-isText = Char.isAlpha
-isVerb = Char.isUpper
+asText cell =
+  case List.filter Char.isAlpha cell of
+    first :: rest -> Just first
+    _ -> Nothing
+
+asVerb cell =
+  case List.filter Char.isUpper cell of
+    first :: rest -> Just first
+    _ -> Nothing
 
 
-testRow1 = ['·', 'a', '=', 'P', '·']
-testRow2 = ['b', '=', 'c']
-testRow3 = ['·', '·', '<']
-testRow4 = ['·', '·', 'd', '→']
+testRows =
+  [ ""
+  , "·a=P·"
+  , "b=c"
+  , "··<"
+  , "··d→"
+  ]
 
-testGrid = LinkedGrid.fromLists '·' 5 5 [[], testRow1, testRow2, testRow3, testRow4]
+stringListToCells rows =
+  let
+    makeCell c = case c of 
+      '·' -> []
+      _ -> [c]
 
-movesTestGrid = LinkedGrid.fromLists '·' 7 7
-  (List.map String.toList
+    makeRow s =
+      s
+        |> String.toList
+        |> List.map makeCell
+  in
+    List.map makeRow rows
+
+testGrid : Grid
+testGrid = LinkedGrid.fromLists emptyCell 5 5 (stringListToCells testRows)
+
+movesTestGrid = LinkedGrid.fromLists emptyCell 7 7
+  (stringListToCells
     [ ""
     , "···P"
     , "···↑"
@@ -105,7 +159,7 @@ movesTestGrid = LinkedGrid.fromLists '·' 7 7
 movesTestGridStep1 = doMovesAndPushes movesTestGrid
 movesTestGridStep2 = doMovesAndPushes movesTestGridStep1
 
-gridToStr = LinkedGrid.toDebugString String.fromChar
+gridToStr = LinkedGrid.toDebugString cellDebugString
 
 testGridDebugStr = gridToStr testGrid
 
@@ -129,10 +183,9 @@ flipCellDirection loc =
   let
     result = loc
       |> LinkedGrid.axisGet
-      |> flipDir
-      |> Maybe.map (\c -> LinkedGrid.axisSet c loc)
-      |> Maybe.map LinkedGrid.flipAxis
-      |> Maybe.withDefault loc
+      |> List.map (flipDir >> (Maybe.withDefault '!')) -- default should never be used
+      |> (\cell -> LinkedGrid.axisSet cell loc)
+      |> LinkedGrid.flipAxis
 
     --dummy = Debug.log "flipCellDirection"
     --  [LinkedGrid.axisGet loc, LinkedGrid.axisGet result] 
@@ -168,10 +221,10 @@ moveAndPush axisWithMoveAtOrigin =
                 contents = LinkedGrid.axisGet axis
               in
                 -- found a(nother) push Cell, keep going
-                if isPush contents then followPushes axis
+                if hasPush contents then followPushes axis
 
                 -- found stop, so nothing moves
-                else if isStop contents then Nothing
+                else if hasStop contents then Nothing
 
                 -- done searching (calling code will do move)
                 else Just axis
@@ -185,7 +238,8 @@ moveAndPush axisWithMoveAtOrigin =
       Nothing -> followPushes (flipCellDirection axisWithMoveAtOrigin)
       updatedAxis -> updatedAxis
   in
-    Maybe.map (LinkedGrid.axisSet '·') result
+    -- next step: need to do above for all moves in cell
+    Maybe.map clearCell result
 
 doMovesAndPushes : Grid -> Grid
 doMovesAndPushes initialGrid =
@@ -194,10 +248,15 @@ doMovesAndPushes initialGrid =
     moveCoords : List ( Int, Int, Direction )
     moveCoords =
       let
+        addIfMove : Location -> List ( Int, Int, Direction ) -> List ( Int, Int, Direction )
         addIfMove loc acc =
           let
             contents = LinkedGrid.getContents loc
-            direction = moveDir contents
+
+            -- TEMP - until I process each item in the cell
+            direction = case contents of
+              c :: rest -> moveDir c
+              _ -> Nothing
 
             ( x, y ) = LinkedGrid.getLocationCoordinates loc
           in
@@ -226,19 +285,23 @@ testAxis direction = Maybe.map
   (\loc -> LinkedGrid.makeAxis loc direction)
   (LinkedGrid.at 1 1 movedGrid)
 
-maybeAxisToString axis = 
+
+
+
+maybeAxisToString : Maybe Axis -> String
+maybeAxisToString axis =
   axis
     |> Maybe.map LinkedGrid.gridFromAxis
-    |> Maybe.map (LinkedGrid.toDebugString String.fromChar)
+    |> Maybe.map (LinkedGrid.toDebugString cellDebugString)
     |> Maybe.withDefault "!" 
 
 axisTestResults = 
-  [ Maybe.map (LinkedGrid.axisSet '!') (testAxis Down)
-  , Maybe.map (LinkedGrid.axisSetAt 2 '!') (testAxis Down)
-  , Maybe.map (LinkedGrid.axisSet '!') (testAxis Right)
-  , Maybe.map (LinkedGrid.axisSetAt 2 '!') (testAxis Right)
-  , Maybe.map (LinkedGrid.axisSetAt 1 '!') (testAxis Left)
-  , Maybe.map (LinkedGrid.axisSetAt 1 '!') (testAxis Up)
+  [ Maybe.map (addToCell '!') (testAxis Down)
+  , Maybe.map (addToCellAt 2 '!') (testAxis Down)
+  , Maybe.map (addToCell '!') (testAxis Right)
+  , Maybe.map (addToCellAt 2 '!') (testAxis Right)
+  , Maybe.map (addToCellAt 1 '!') (testAxis Left)
+  , Maybe.map (addToCellAt 1 '!') (testAxis Up)
 
   --, testAxis
   --    |> Maybe.map 
@@ -254,30 +317,42 @@ surroundingUsingAxis :
   -> acc
 surroundingUsingAxis fn a axis =
     case ( LinkedGrid.axisForward -1 axis, LinkedGrid.axisForward 1 axis ) of
-      ( Just prevAxis, Just nextAxis ) -> fn
-        (LinkedGrid.axisGet prevAxis)
-        (LinkedGrid.axisGet axis)
-        (LinkedGrid.axisGet nextAxis)
-        (surroundingUsingAxis fn a nextAxis)
+      ( Just prevAxis, Just nextAxis )
+        -> fn
+          (LinkedGrid.axisGet prevAxis)
+          (LinkedGrid.axisGet axis)
+          (LinkedGrid.axisGet nextAxis)
+          (surroundingUsingAxis fn a nextAxis)
 
-      ( Nothing, Just nextAxis ) -> surroundingUsingAxis fn a nextAxis
+      ( Nothing, Just nextAxis )
+        -> surroundingUsingAxis fn a nextAxis
 
       _ -> a
 
 lookForRulesOnAxis : Axis -> List Rule
 lookForRulesOnAxis axis = 
   let
+    impl : Cell -> Cell -> Cell -> List Rule -> List Rule
     impl x y z a =
-      if not (isText x && not (isVerb x) && isText z) then a
-      else 
-        case y of
-          '=' ->
-            if isVerb z then  Is x (verbFromOccupant z) :: a
-            else              Becomes x z :: a
-          '<' ->
-            if isVerb z then  a
-            else              Has x z :: a
-          _ -> a
+
+--       if not (isText x && not (isVerb x) && isText z) then a
+      --if not (isText x) || isVerb x || not (isText z) then a
+
+
+      case ( asText x, asVerb x, asText z ) of
+        ( Nothing, _, _ ) -> a
+        ( _, Just _, _ )  -> a
+        ( _, _, Nothing ) -> a
+        _ ->
+          let
+            firstX = tempGetFirst x
+            firstZ = tempGetFirst z
+          in
+            case ( tempGetFirst y, asVerb z ) of
+              ( '=', Just zVerb ) -> Is      firstX (verbFromOccupant zVerb) :: a
+              ( '=', Nothing )    -> Becomes firstX firstZ                   :: a
+              ( '<', Nothing )    -> Has     firstX firstZ                   :: a
+              _ -> a
   in
     surroundingUsingAxis impl [] axis
 
@@ -328,80 +403,3 @@ rulesTestResult =
       ruleStrings = List.map ruleDebugString (lookForRules testGrid)
     in 
       String.join "\n" ruleStrings
-
------------
--- 1D!
-
-
-type Axis1D = Axis1D String Int
-
-axisGetAt m axis = case axis of
-  Axis1D s n ->
-    s |> String.dropLeft (n + m)
-      |> String.uncons
-      |> Maybe.withDefault ( '!', "" )
-      |> \( c, _ ) -> c
-axisGet = axisGetAt 0
-
-axisSetAt m char axis = case axis of
-  Axis1D s n ->
-    let
-      index = n + m
-      left = String.left index s
-      right = String.cons char <| String.dropLeft (index + 1) s
-    in
-      Axis1D (left ++ right) n
-axisSet = axisSetAt 0
-
-axisForward m axis = case axis of
-  Axis1D s n -> Axis1D s (n + m)
-
-axisOriginalString axis = case axis of
-  Axis1D s _ -> s
-
-
-move axisWithMoveAtOrigin =
-  let
-    doPush adjoiningAxis =
-      axisSet (axisGetAt -1 adjoiningAxis) adjoiningAxis
-        |> axisForward -1
-
-    impl prevAxis =
-      let
-        axis = axisForward 1 prevAxis
-        contents = axisGet axis
-        result = 
-          if isPush contents then impl axis
-            else if isStop contents then Nothing
-            else Just axis
-      in
-        Maybe.map doPush result
-
-  in
-    impl axisWithMoveAtOrigin
-      |> Maybe.map (axisSet '.')
-
-doMoves : String -> String
-doMoves state =
-  let
-    -- find moves
-    moveIndices : List Int
-    moveIndices =
-      String.toList state
-        |> List.indexedMap (\n -> \el -> ( n, el ))
-        |> List.filter (\(_, el) -> isMove el)
-        |> List.map Tuple.first 
-
-    impl n str =
-      case move (Axis1D str n) of
-        Just (Axis1D modified _) -> modified
-        _ -> str
-              --if String.length result == String.length str then impl (n + 1) str
-              --else "Error! " ++ result ++ " vs. " ++ str
-
-  in
-    List.foldr impl state moveIndices
-
-
-testCases = [ "..→...", "..→PPP..", ".→.→...", ".→P.", "..→S", "→PPSP..", "..→S..→→→.." ]
-testResult = List.map (\s -> s ++ " -> " ++ (doMoves s)) testCases |> String.join "\n"

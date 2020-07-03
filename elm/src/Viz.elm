@@ -99,9 +99,7 @@ type Msg
 view : Model -> Html.Html Msg
 view model =
   div []
-    [ h3 [] [ text "Baba 1D test" ]
-    , pre [] [ text Baba.testResult ]
-    , h3 [] [ text "Rules test" ]
+    [ h3 [] [ text "Rules test" ]
     , table [ class "table" ]
       [ tr []
         [ td []
