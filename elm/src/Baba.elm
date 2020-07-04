@@ -56,6 +56,7 @@ moveToCell id from to axis =
   let
     fromContent = LinkedGrid.axisGetAt from axis
   
+    --dummy0 = Debug.log "move from content" fromContent
     maybeObj = List.Extra.find (Tuple.first >> ((==) id)) fromContent
     --dummy = Debug.log "move ids" [id, from, to, if isJust maybeObj then 1 else 0]
 
@@ -319,8 +320,8 @@ moveAndPush objectId axisWithMoveAtOrigin =
       in
         result
 
-    pushChain : Axis -> Maybe (Axis)
-    pushChain prevAxis = 
+    pushChain : Axis -> Bool -> Maybe (Axis)
+    pushChain prevAxis shouldPush = 
       case LinkedGrid.axisForward 1 prevAxis of
         Just axis ->
           let
@@ -330,7 +331,8 @@ moveAndPush objectId axisWithMoveAtOrigin =
             -- found a(nother) push Cell, keep going
             if hasPush contents then
               let
-                result = followPushes axis
+                result = pushChain axis True
+
                 --dummy2 = Debug.log "follow pushes (after)"
                 --  ( case result of 
                 --    Just newAxis -> 
@@ -348,19 +350,21 @@ moveAndPush objectId axisWithMoveAtOrigin =
                 --  , LinkedGrid.axisGetAt 1 axis |> cellDebugString
                 --  ]
               in
-                result
+                Maybe.andThen (if shouldPush then doPush else LinkedGrid.axisForward -1) result
 
             -- found stop, so nothing moves
             else if hasStop contents then Nothing
 
             -- done searching (calling code will do move)
-            else Just axis
+            else if shouldPush then doPush axis
+
+            else LinkedGrid.axisForward -1 axis
 
         -- treat boundary as stop
         _ -> Nothing
 
     followPushes : Axis -> Maybe (Axis)
-    followPushes prevAxis = pushChain prevAxis |> Maybe.andThen doPush 
+    followPushes prevAxis = pushChain prevAxis False
 
     pushResult = 
       case followPushes axisWithMoveAtOrigin of
@@ -370,15 +374,19 @@ moveAndPush objectId axisWithMoveAtOrigin =
 
         updatedAxis -> updatedAxis
 
+    --dummy4 = Debug.log "original axis"
+    --        [ LinkedGrid.axisOrigin axisWithMoveAtOrigin |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
+    --        ]
+
     --dummy3 = Debug.log "push result"
     --    ( case pushResult of 
-    --      Just newAxis -> 
-    --        [ LinkedGrid.axisOrigin newAxis |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
-    --        , LinkedGrid.axisGetAt 0 newAxis |> cellDebugString
-    --        , LinkedGrid.axisGetAt 1 newAxis |> cellDebugString
-    --        , LinkedGrid.axisGetAt 2 newAxis |> cellDebugString
-    --        ]
-    --      _ -> ["failed"]
+    --        Just newAxis -> 
+    --          [ LinkedGrid.axisOrigin newAxis |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
+    --          , LinkedGrid.axisGetAt 0 newAxis |> cellDebugString
+    --          , LinkedGrid.axisGetAt 1 newAxis |> cellDebugString
+    --          , LinkedGrid.axisGetAt 2 newAxis |> cellDebugString
+    --          ]
+    --        _ -> ["failed"]
     --    )
   in
     -- finally move the move object itself
@@ -421,7 +429,7 @@ doMovesAndPushes initialGrid =
               ( Just location, Just direction )
                 -> moveAndPush id (LinkedGrid.makeAxis location direction)
               _ -> Nothing
-            --dummy = Debug.log "doMovesAndPushes" [isJust maybeUpdatedAxis]
+            --dummy2 = Debug.log "doMovesAndPushes" [isJust maybeUpdatedAxis]
           in
             case maybeUpdatedAxis of 
               Just updatedAxis -> LinkedGrid.gridFromAxis updatedAxis
@@ -469,10 +477,6 @@ lookForRulesOnAxis axis =
     impl : Cell -> Cell -> Cell -> List Rule -> List Rule
     impl x y z a =
 
---       if not (isText x && not (isVerb x) && isText z) then a
-      --if not (isText x) || isVerb x || not (isText z) then a
-
-
       case ( asText x, asVerb x, asText z ) of
         ( Nothing, _, _ ) -> a
         ( _, Just _, _ )  -> a
@@ -484,8 +488,8 @@ lookForRulesOnAxis axis =
           in
             case ( tempGetFirst y, asVerb z ) of
               ( ( _, '=' ), Just zVerb ) -> Is      firstX (verbFromOccupant zVerb) :: a
-              ( ( _, '='), Nothing )    -> Becomes firstX firstZ                   :: a
-              ( ( _, '<'), Nothing )    -> Has     firstX firstZ                   :: a
+              ( ( _, '='), Nothing )     -> Becomes firstX firstZ                   :: a
+              ( ( _, '<'), Nothing )     -> Has     firstX firstZ                   :: a
               _ -> a
   in
     surrounding impl [] axis
@@ -590,14 +594,16 @@ testGrid =
     --    [ "→PP→" ]
     --  )
 
-    LinkedGrid.fromLists emptyCell 4 4
-      [ [ [ ( 0, '→'), ( 1, 'P') ]
-        ]
-      ]
+    --LinkedGrid.fromLists emptyCell 4 4
+    --  [ [ []
+    --    , [ ( 0, '→' ), ( 1, '→' ) ]
+    --    , [ ( 2, 'P') ]
+    --    ]
+    --  ]
 
-    --Random.step generator seed
-    --  |> Tuple.first
-    --  |> makeRandomGrid
+    Random.step generator seed
+      |> Tuple.first
+      |> makeRandomGrid
 
 problemGraphEvo =
   [ testGrid
