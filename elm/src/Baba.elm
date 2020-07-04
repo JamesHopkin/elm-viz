@@ -1,13 +1,15 @@
-module Baba exposing ( testGridDebugStr, rulesTestResult, countChars, problemGraphEvo,
+module Baba exposing ( rulesTestGridDebugStr, rulesTestResult, countChars, problemGraphEvo,
   Model, Msg, init, update, subscription, gridToStr )
 
 import Dict exposing ( Dict )
 import Random
 import Time
 
+import List.Extra
+
 import LinkedGrid exposing ( Direction (..) )
 
-type alias Object = Char
+type alias Object = ( Int, Char )
 type alias Cell = List Object
 type alias Location = LinkedGrid.Location Cell
 
@@ -19,17 +21,25 @@ emptyCell = []
 
 
 -- char of arbitrary item at the moment
-cellDebugString cell = 
-  if showAllContents then
-    case cell of
-      [] -> "·"
-      _ -> String.fromList cell
-
+cellDebugString cell =
+  if showIds then
+    List.map (\( id, c ) -> String.fromInt id) cell
+     |> String.join ""
   else
-    case cell of
-      first :: rest ->
-        (String.fromChar (if first == '·' then '!' else first)) ++ " "
-      _ -> "· "
+    let
+      toString c = String.fromChar (if c == '·' then '!' else c)
+      chars = List.map Tuple.second cell
+    in
+      if showAllContents then
+        case chars of
+          [] -> "·"
+          _ -> String.fromList chars
+
+      else
+        case chars of
+          first :: second :: _ -> (toString first) ++ (toString second)
+          first :: _           -> (toString first) ++ " "
+          _ -> "· "
 
 
 
@@ -40,14 +50,49 @@ addToCellAt offset object axis =
     LinkedGrid.axisSet newContents axis
 addToCell = addToCellAt 0
 
-addToCellUniqueAt : Int -> Object -> Axis -> Axis
-addToCellUniqueAt offset object axis =
+
+moveToCell : Int -> Int -> Int -> Axis -> Maybe Axis
+moveToCell id from to axis =
   let
-    contents = LinkedGrid.axisGetAt offset axis
+    fromContent = LinkedGrid.axisGetAt from axis
+  
+    maybeObj = List.Extra.find (Tuple.first >> ((==) id)) fromContent
+    --dummy = Debug.log "move ids" [id, from, to, if isJust maybeObj then 1 else 0]
+
+    result =
+       case maybeObj of
+          Just obj -> 
+            let
+              newFromContent = List.filter (Tuple.first >> ((/=) id)) fromContent
+              newToContent = obj :: LinkedGrid.axisGetAt to axis
+              --dummy2 = Debug.log "move" [fromContent, newToContent]
+            in
+              Just
+                ( axis
+    -- could optimise to not replace grid twice
+                    |> LinkedGrid.axisSetAt from newFromContent
+                    |> LinkedGrid.axisSetAt to newToContent
+                )
+
+          _ -> Nothing
+
+    --dummy3 = Debug.log "move (after)"
+    --  ( case result of 
+    --    Just newAxis -> 
+    --      [ LinkedGrid.axisOrigin newAxis |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
+    --      , LinkedGrid.axisGetAt -1 newAxis |> cellDebugString
+    --      , LinkedGrid.axisGetAt 0 newAxis |> cellDebugString
+    --      , LinkedGrid.axisGetAt 1 newAxis |> cellDebugString
+    --      ]
+    --    _ -> ["failed"]
+    --  )
+
   in
-    if List.member object contents then axis
-    else LinkedGrid.axisSet (object :: contents) axis
-addToCellUnique = addToCellUniqueAt 0
+    result
+
+
+-- say each object is (id, char), move from one cell to another:
+    -- should be easy!
 
 
 
@@ -56,7 +101,7 @@ clearCell = clearCellAt 0
 
 tempGetFirst cell = case cell of
   first :: rest -> first
-  _ -> '$' -- need to fix if these start coming out
+  _ -> ( -1, '$' ) -- need to fix if these start coming out
 
 -- may need object IDs
 removeFromCell object axis =
@@ -100,7 +145,7 @@ verbDebugString v = case v of
   _ -> "you"
 
 
-verbFromOccupant s = case s of
+verbFromOccupant c = case c of
   'P' -> Push
   'M' -> Move
   'D' -> Defeat
@@ -110,18 +155,18 @@ verbFromOccupant s = case s of
   'F' -> Float_
   _ -> You
 
-moveDir c = case c of
+moveDir ( _, c ) = case c of
   '←' -> Just Left
   '↑' -> Just Up
   '→' -> Just Right
   '↓' -> Just Down
   _ -> Nothing
 
-flipDir c = case c of
-  '←' -> Just '→'
-  '↑' -> Just '↓'
-  '→' -> Just '←'
-  '↓' -> Just '↑'
+flipDir ( id, c ) = case c of
+  '←' -> Just ( id, '→' )
+  '↑' -> Just ( id, '↓' )
+  '→' -> Just ( id, '←' )
+  '↓' -> Just ( id, '↑' )
   _ -> Nothing
 
 isMove obj = case moveDir obj of
@@ -130,18 +175,31 @@ isMove obj = case moveDir obj of
 
 hasMove = List.any isMove
 
-hasPush cell = List.member 'P' cell
-hasStop cell = List.member 'S' cell
+isPush ( _, c ) = c == 'P'
+hasPush cell = List.any isPush cell
+
+isStop ( _, c ) = c == 'S'
+hasStop cell = List.any isStop cell
 
 asText cell =
-  case List.filter Char.isAlpha cell of
-    first :: rest -> Just first
-    _ -> Nothing
+  let
+    filtered = cell
+      |> List.map Tuple.second
+      |> List.filter Char.isAlpha
+  in
+    case filtered of
+      first :: rest -> Just first
+      _ -> Nothing
 
 asVerb cell =
-  case List.filter Char.isUpper cell of
-    first :: rest -> Just first
-    _ -> Nothing
+  let
+    filtered = cell
+      |> List.map Tuple.second
+      |> List.filter Char.isUpper
+  in
+    case filtered of
+      first :: rest -> Just first
+      _ -> Nothing
 
 
 testRows =
@@ -152,21 +210,27 @@ testRows =
   , "··d→"
   ]
 
+stringListToCells : List String -> List (List Cell)
 stringListToCells rows =
   let
-    makeCell c = case c of 
-      '·' -> []
-      _ -> [c]
+    makeCell : Char -> ( Int, List Cell ) -> ( Int, List Cell )
+    makeCell c ( index, outRow ) =
+      if c == '·' then ( index, [] :: outRow )
+      else ( index + 1, [( index, c )] :: outRow )
 
-    makeRow s =
-      s
-        |> String.toList
-        |> List.map makeCell
+    makeRow : String -> ( Int, List (List Cell) ) -> ( Int, List (List Cell) )
+    makeRow s ( initialIndex, outRows ) =
+        s
+          |> String.toList
+          |> List.foldr makeCell ( initialIndex, [] )
+          |> \( index, cells ) -> ( index, cells :: outRows)
+
   in
-    List.map makeRow rows
+    --List.foldr (String.toList >> (List.foldr makeCell) >> Tuple.second) ( 0, [] ) rows
+    List.foldr makeRow ( 0, [] ) rows |> Tuple.second
 
-testGrid : Grid
-testGrid = LinkedGrid.fromLists emptyCell 5 5 (stringListToCells testRows)
+rulesTestGrid : Grid
+rulesTestGrid = LinkedGrid.fromLists emptyCell 5 5 (stringListToCells testRows)
 
 movesTestGrid = LinkedGrid.fromLists emptyCell 7 7
   (stringListToCells
@@ -181,7 +245,7 @@ movesTestGrid = LinkedGrid.fromLists emptyCell 7 7
 
 gridToStr = LinkedGrid.toDebugString cellDebugString
 
-testGridDebugStr = gridToStr testGrid
+rulesTestGridDebugStr = gridToStr rulesTestGrid
 
 
 roll : Random.Generator Int
@@ -203,13 +267,12 @@ flipCellDirection loc =
   let
     result = loc
       |> LinkedGrid.axisGet
-      |> List.map (flipDir >> (Maybe.withDefault '!')) -- default should never be used
-      |> List.filter ((/=) '!') -- until we're probably tracking items moving, removing anything else when flipping move objects
+      |> List.map (\obj -> flipDir obj |> Maybe.withDefault obj)
       |> (\cell -> LinkedGrid.axisSet cell loc)
       |> LinkedGrid.flipAxis
 
-    dummy = Debug.log "flipCellDirection"
-      [LinkedGrid.axisGet loc, LinkedGrid.axisGet result] 
+    --dummy = Debug.log "flipCellDirection"
+    --  [LinkedGrid.axisGet loc, LinkedGrid.axisGet result] 
   in
     result
 
@@ -228,35 +291,33 @@ isJust maybe = case maybe of
   Ignore stuck ones in first attempt, i.e. just clear 
 -}
 
-moveAndPushNoClearCell : Axis -> Maybe (Axis)
-moveAndPushNoClearCell axisWithMoveAtOrigin =
+moveAndPush : Int -> Axis -> Maybe (Axis)
+moveAndPush objectId axisWithMoveAtOrigin =
   let
     doPush : Axis -> Maybe Axis 
     doPush adjoiningAxis =
       let
-        direction = LinkedGrid.getAxisDirection adjoiningAxis
+        moveFunc : Object -> Axis -> Axis
+        moveFunc ((id, _) as obj) axis =
+          let
+            dummy = Nothing -- Debug.log "push" [id, if isPush obj then 1 else 0]
+          in
+            if isPush obj
+              then
+                Maybe.withDefault axis (moveToCell id -1 0 axis)
+                --addToCellUnique obj axis
+              else
+                axis
 
-        addFunc : Object -> Axis -> Axis
-        addFunc obj axis =
-          if Maybe.withDefault direction (moveDir obj) == direction
-            then
-              addToCellUnique obj axis
-            else
-              axis
+        updatedAxis = LinkedGrid.axisGetAt -1 adjoiningAxis
+                        |> List.foldr moveFunc adjoiningAxis
+        result = LinkedGrid.axisForward -1 updatedAxis
 
+        ( x, y ) = LinkedGrid.axisOrigin updatedAxis |> LinkedGrid.getLocationCoordinates
+        --dummy4 = Debug.log "doPush result"
+        --  [ if isJust result then 1 else 0, x, y ]
       in
-        LinkedGrid.axisGetAt -1 adjoiningAxis
-          |> List.foldr addFunc adjoiningAxis
-          |> LinkedGrid.axisForward -1
-
-        -- LOGGING --
-        --( x, y ) = LinkedGrid.axisOrigin prevAxis |> LinkedGrid.getLocationCoordinates
-        --dummy = Debug.log "followPushes"
-        --  [ String.fromChar <| LinkedGrid.axisGet prevAxis
-        --  , String.fromInt x
-        --  , String.fromInt y
-        --  ] 
-        -------------
+        result
 
     pushChain : Axis -> Maybe (Axis)
     pushChain prevAxis = 
@@ -267,7 +328,27 @@ moveAndPushNoClearCell axisWithMoveAtOrigin =
             contents = LinkedGrid.axisGet axis
           in
             -- found a(nother) push Cell, keep going
-            if hasPush contents then followPushes axis
+            if hasPush contents then
+              let
+                result = followPushes axis
+                --dummy2 = Debug.log "follow pushes (after)"
+                --  ( case result of 
+                --    Just newAxis -> 
+                --      [ LinkedGrid.axisOrigin newAxis |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
+                --      , LinkedGrid.axisGetAt -1 newAxis |> cellDebugString
+                --      , LinkedGrid.axisGetAt 0 newAxis |> cellDebugString
+                --      , LinkedGrid.axisGetAt 1 newAxis |> cellDebugString
+                --      ]
+                --    _ -> ["failed"]
+                --  )
+                --dummy1 = Debug.log "follow pushes (before)"
+                --  [ LinkedGrid.axisOrigin axis |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
+                --  , LinkedGrid.axisGetAt -1 axis |> cellDebugString
+                --  , LinkedGrid.axisGetAt 0 axis |> cellDebugString
+                --  , LinkedGrid.axisGetAt 1 axis |> cellDebugString
+                --  ]
+              in
+                result
 
             -- found stop, so nothing moves
             else if hasStop contents then Nothing
@@ -281,24 +362,27 @@ moveAndPushNoClearCell axisWithMoveAtOrigin =
     followPushes : Axis -> Maybe (Axis)
     followPushes prevAxis = pushChain prevAxis |> Maybe.andThen doPush 
 
+    pushResult = 
+      case followPushes axisWithMoveAtOrigin of
+        Nothing -> 
+          flipCellDirection axisWithMoveAtOrigin
+            |> followPushes
 
--- temporarily clear out non-moves, until probably tracking objects between cells
-    tempFilterOutNonMoves axis = 
-      axis
-        |> LinkedGrid.axisGet
-        |> List.filter (moveDir >> isJust) 
-        |> (\cell -> LinkedGrid.axisSet cell axis)
+        updatedAxis -> updatedAxis
 
+    --dummy3 = Debug.log "push result"
+    --    ( case pushResult of 
+    --      Just newAxis -> 
+    --        [ LinkedGrid.axisOrigin newAxis |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
+    --        , LinkedGrid.axisGetAt 0 newAxis |> cellDebugString
+    --        , LinkedGrid.axisGetAt 1 newAxis |> cellDebugString
+    --        , LinkedGrid.axisGetAt 2 newAxis |> cellDebugString
+    --        ]
+    --      _ -> ["failed"]
+    --    )
   in
-    case followPushes axisWithMoveAtOrigin of
-      Nothing -> 
-        flipCellDirection axisWithMoveAtOrigin
-          |> followPushes
-
-          |> Maybe.map tempFilterOutNonMoves
-
-
-      updatedAxis -> updatedAxis
+    -- finally move the move object itself
+    pushResult |> Maybe.andThen (moveToCell objectId 0 1)
 
 doMovesAndPushes : Grid -> Grid
 doMovesAndPushes initialGrid =
@@ -330,30 +414,21 @@ doMovesAndPushes initialGrid =
 
         -- list of objects, grid is accumulator (will need additional state to record what got stuck)
         moveFoldFunc : Object -> Grid -> Grid
-        moveFoldFunc object innerGrid =
+        moveFoldFunc (( id, c ) as object) innerGrid =
           let
-            maybeMovedAxis = case ( LinkedGrid.at x y innerGrid, moveDir object ) of
+            -- get location and direction, will never use Nothing case
+            maybeUpdatedAxis = case ( LinkedGrid.at x y innerGrid, moveDir object ) of
               ( Just location, Just direction )
-                -> moveAndPushNoClearCell (LinkedGrid.makeAxis location direction)
+                -> moveAndPush id (LinkedGrid.makeAxis location direction)
               _ -> Nothing
-            
+            --dummy = Debug.log "doMovesAndPushes" [isJust maybeUpdatedAxis]
           in
-            case maybeMovedAxis of 
+            case maybeUpdatedAxis of 
               Just updatedAxis -> LinkedGrid.gridFromAxis updatedAxis
               _ -> innerGrid
 
-        updatedGrid : Grid
-        updatedGrid = List.foldr moveFoldFunc grid movingObjects
-
       in
-        case LinkedGrid.at x y updatedGrid of
-          Just ( location )
-            -> LinkedGrid.makeAxis location Up    -- direction doesn't matter
-              |> clearCell
-              |> LinkedGrid.gridFromAxis
-          _ -> updatedGrid
-              --if String.length result == String.length str then impl (n + 1) str
-              --else "Error! " ++ result ++ " vs. " ++ str
+        List.foldr moveFoldFunc grid movingObjects
 
   in
     List.foldr impl initialGrid moveCoords
@@ -404,13 +479,13 @@ lookForRulesOnAxis axis =
         ( _, _, Nothing ) -> a
         _ ->
           let
-            firstX = tempGetFirst x
-            firstZ = tempGetFirst z
+            ( _, firstX ) = tempGetFirst x
+            ( _, firstZ ) = tempGetFirst z
           in
             case ( tempGetFirst y, asVerb z ) of
-              ( '=', Just zVerb ) -> Is      firstX (verbFromOccupant zVerb) :: a
-              ( '=', Nothing )    -> Becomes firstX firstZ                   :: a
-              ( '<', Nothing )    -> Has     firstX firstZ                   :: a
+              ( ( _, '=' ), Just zVerb ) -> Is      firstX (verbFromOccupant zVerb) :: a
+              ( ( _, '='), Nothing )    -> Becomes firstX firstZ                   :: a
+              ( ( _, '<'), Nothing )    -> Has     firstX firstZ                   :: a
               _ -> a
   in
     surrounding impl [] axis
@@ -459,19 +534,21 @@ lookForRules grid =
 
 rulesTestResult =
     let
-      ruleStrings = List.map ruleDebugString (lookForRules testGrid)
+      ruleStrings = List.map ruleDebugString (lookForRules rulesTestGrid)
     in 
       String.join "\n" ruleStrings
 
+
+-- use stringListToCells!
 makeRandomGrid : List Char -> Grid
 makeRandomGrid chars =
   let
-    impl : List Char -> List (List Cell) -> List (List Cell)
+    impl : List Char -> List String -> List String
     impl innerChars acc = case List.take randomGridSize innerChars of
       [] -> acc
-      block -> (List.map (\c -> if c == '_' then [] else [c]) block) :: (impl (List.drop randomGridSize innerChars) acc)
+      block -> (String.fromList block) :: (impl (List.drop randomGridSize innerChars) acc)
   in
-    LinkedGrid.fromLists emptyCell randomGridSize randomGridSize (impl chars [])
+    LinkedGrid.fromLists emptyCell randomGridSize randomGridSize (stringListToCells (impl chars []))
 
 -- list of grids to update for now
 type alias Model = List Grid
@@ -480,14 +557,14 @@ type Msg
   = Update Time.Posix
   | RandomGrid (List Char)
 
-seed = Random.initialSeed 2
+seed = Random.initialSeed 4
 generator = 
-  Random.list (randomGridSize * randomGridSize) <| Random.uniform '_' (String.toList "____←↑→↓PPS")
+  Random.list (randomGridSize * randomGridSize) <| Random.uniform '·' (String.toList "························←↑→↓PPPPSS")
 
 countChars grid = 
   let
     addContentsToDict : Object -> Dict Char Int -> Dict Char Int
-    addContentsToDict obj dict =
+    addContentsToDict ( id, obj ) dict =
       let
         key = case obj of
           '←' -> 'M'
@@ -507,62 +584,62 @@ countChars grid =
       |> Dict.toList
 
 -- random from seed
-testGraph = 
-    LinkedGrid.fromLists emptyCell 4 4
-      (stringListToCells
-        [ ""
-        , "·↑"
-        , "·↑"
-        , "·↑"
-        ]
-      )
+testGrid = 
+    --LinkedGrid.fromLists emptyCell 4 4
+    --  (stringListToCells
+    --    [ "→PP→" ]
+    --  )
 
+    LinkedGrid.fromLists emptyCell 4 4
+      [ [ [ ( 0, '→'), ( 1, 'P') ]
+        ]
+      ]
 
     --Random.step generator seed
     --  |> Tuple.first
     --  |> makeRandomGrid
 
 problemGraphEvo =
-  [ testGraph
-  , testGraph |> doMovesAndPushes
-  , testGraph |> doMovesAndPushes |> doMovesAndPushes
-  , testGraph |> doMovesAndPushes |> doMovesAndPushes |> doMovesAndPushes
+  [ testGrid
+  , testGrid |> doMovesAndPushes
+  , testGrid |> doMovesAndPushes |> doMovesAndPushes
+  , testGrid |> doMovesAndPushes |> doMovesAndPushes |> doMovesAndPushes
   ]
 
 init : (Msg -> msg) -> ( Model, Cmd msg )
 init msg =
-  ( [ testGraph
+  ( [ testGrid
 
 
 
 
-    --, movesTestGrid
-    --, LinkedGrid.fromLists emptyCell 7 7
-    --  (stringListToCells
-    --    [ ""
-    --    , "···↑·↑"
-    --    , "·P··↑"
-    --    , "·P·↑"
-    --    , "P↑"
-    --    , "↑"
-    --    ]
-    --  )
-    --, LinkedGrid.fromLists emptyCell 4 4
-    --  (stringListToCells
-    --    [ "·↓"
-    --    , "··←"
-    --    ]
-    --  )
+    , movesTestGrid
+    , LinkedGrid.fromLists emptyCell 7 7
+      (stringListToCells
+        [ ""
+        , "···↑·↑"
+        , "·P··↑"
+        , "·P·↑"
+        , "P↑"
+        , "↑"
+        ]
+      )
+    , LinkedGrid.fromLists emptyCell 4 4
+      (stringListToCells
+        [ "·↓"
+        , "··←"
+        ]
+      )
     ]
-  , Cmd.none -- Random.generate (RandomGrid >> msg) generator
+  , Random.generate (RandomGrid >> msg) generator
   )
 
 update : Msg -> Model -> Model 
 update msg model =
   case msg of
-    Update _ -> model
+    Update _ -> List.map doMovesAndPushes model
       --let
-      --  counts = case updated of
+      --  counts = case model of
       --    first :: _ -> countChars first
       --    _ -> []
       --  dummy = Debug.log "char counts" counts
@@ -573,10 +650,11 @@ update msg model =
     RandomGrid chars -> (makeRandomGrid chars) :: model
 
 subscription : (Msg -> msg) -> Sub msg
-subscription msg = Time.every 1000 (Update >> msg)
+subscription msg = Time.every 300 (Update >> msg)
 
-showAllContents = True
-randomGridSize = 4
+showAllContents = False
+showIds = False
+randomGridSize = 20
 
 
 --   ←

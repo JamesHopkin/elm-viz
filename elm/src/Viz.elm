@@ -147,7 +147,7 @@ view model =
     , h3 [] [ text "Rules test" ]
     , table [ class "table" ]
       [ tr []
-        [ tdFromString Baba.testGridDebugStr
+        [ tdFromString Baba.rulesTestGridDebugStr
         , tdFromString Baba.rulesTestResult
         ]
       ]

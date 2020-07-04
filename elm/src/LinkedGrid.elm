@@ -6,6 +6,8 @@ module LinkedGrid exposing ( LinkedGrid, toDebugString, Location, foldLocations,
 
 import Array exposing ( Array )
 
+import Debug
+
 
 type LinkedGrid el = LinkedGrid el Int Int (Array (Array el))
 
@@ -155,9 +157,10 @@ axisSetAt offset content axis = case axis of
   Axis (Location grid x y) direction ->
     let
       ( newX, newY ) = applyOffset ( x, y ) offset direction
-      newLocation = setContents (Location grid newX newY) content
+      newGrid = case setContents (Location grid newX newY) content of
+        Location g _ _ -> g
     in
-      makeAxis newLocation direction
+      makeAxis (Location newGrid x y) direction
 axisSet = axisSetAt 0
 
 axisForward : Int -> Axis el -> Maybe (Axis el)
