@@ -1,7 +1,8 @@
 module LinkedGrid exposing ( LinkedGrid, toDebugString, Location, foldLocations, getLocationCoordinates,
                           make, Direction (..),
                           fromLists, at, getContents, setContents, above, right, below, left,
-                          Axis, makeAxis, gridFromAxis, axisOrigin, axisGetAt, axisGet, axisSetAt, axisSet, axisForward, flipAxis )
+                          Axis, makeAxis, gridFromAxis, axisOrigin, axisGetAt, axisGet, axisSetAt, axisSet,
+                            axisForward, flipAxis, getAxisDirection )
 
 import Array exposing ( Array )
 
@@ -179,3 +180,6 @@ flipAxis axis = case axis of
   Axis location Right -> Axis location Left
   Axis location Down -> Axis location Up
   Axis location Left -> Axis location Right
+
+getAxisDirection axis = case axis of
+  Axis _ direction -> direction

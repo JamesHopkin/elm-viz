@@ -4,6 +4,8 @@ import Browser
 import Html exposing ( div, h3, pre, text, table, td, tr )
 import Html.Attributes exposing ( class )
 
+import Time
+
 import Json.Encode as Encode
 import Json.Decode as Decode
 
@@ -53,6 +55,7 @@ type alias Model =
   { selected: List String
   , graph: Graph.Graph
   , state: GraphState
+  , baba: Baba.Model
   }
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -64,6 +67,13 @@ update msg model =
           ( { model | state = InFlight }, render model.graph )
         _ ->
           ( { model | state = Idle }, Cmd.none )
+
+-- not forwarding commands yet
+    BabaMsg babaMsg ->
+      ( { model | baba = Baba.update babaMsg model.baba }
+        , Cmd.none
+      )
+
 
 
 type alias Flags = Int --Decode.Value
@@ -85,34 +95,60 @@ initialGraph = Graph.makeGraph
 
 init : Flags -> ( Model, Cmd Msg )
 init _ =
-  ( { selected = []
-    , graph = initialGraph
-    , state = InFlight
-    }
-  , render initialGraph
-  )
+  let
+    ( babaModel, babaCmd ) = Baba.init BabaMsg
+  in 
+    ( { selected = []
+      , graph = initialGraph
+      , state = InFlight
+      , baba = babaModel
+      }
+    , Cmd.batch
+        [ render initialGraph
+        , babaCmd
+        ]
+    )
 
 type Msg
   = GraphReceived
+  | BabaMsg Baba.Msg
 
+
+-- update Baba every half second
+
+subscriptions _ =
+  Sub.batch
+    [ notifyGraphRendered (\_ -> GraphReceived)
+    , Baba.subscription BabaMsg
+    ]
+
+
+tdFromString str = td [] [ pre [] [ text str ] ]
 
 view : Model -> Html.Html Msg
 view model =
   div []
-    [ h3 [] [ text "Rules test" ]
+    [ h3 [] [ text "What's up with this?" ]
     , table [ class "table" ]
       [ tr []
-        [ td []
-          [ pre [] [ text Baba.testGridDebugStr ] ]
-        , td []
-          [ pre [] [ text Baba.rulesTestResult ] ]
-        ]
-      , tr []
-          <| List.map (\s -> td [] [ pre [] [ text s ] ]) Baba.modifiedGridResultStrings
-      , tr []
-        [ td [] [ pre [] [ text Baba.movesTestGridString ] ]
-        , td [] [ pre [] [ text Baba.movesTestGridStep1String ] ]
-        , td [] [ pre [] [ text Baba.movesTestGridStep2String ] ]
+        (Baba.problemGraphEvo
+          |> List.map Baba.gridToStr
+          |> List.map tdFromString
+        )
+      ]
+    , h3 [] [ text "Move tests" ]
+    , table [ class "table" ]
+      [ tr []
+        (model.baba
+          |> List.map Baba.gridToStr
+          |> List.map tdFromString
+        )
+      ]
+    , h3 [] [ text "Rules test" ]
+    , table [ class "table" ]
+      [ tr []
+        [ tdFromString Baba.testGridDebugStr
+        , tdFromString Baba.rulesTestResult
         ]
       ]
     , text <| "Graph state: " ++ (
@@ -129,5 +165,5 @@ main =
     { init = init
     , view = view
     , update = update
-    , subscriptions = \model -> notifyGraphRendered (\_ -> GraphReceived)
+    , subscriptions = subscriptions
     }
