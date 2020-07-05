@@ -56,45 +56,21 @@ moveToCell id from to axis =
   let
     fromContent = LinkedGrid.axisGetAt from axis
   
-    --dummy0 = Debug.log "move from content" fromContent
-    maybeObj = List.Extra.find (Tuple.first >> ((==) id)) fromContent
-    --dummy = Debug.log "move ids" [id, from, to, if isJust maybeObj then 1 else 0]
-
-    result =
-       case maybeObj of
-          Just obj -> 
-            let
-              newFromContent = List.filter (Tuple.first >> ((/=) id)) fromContent
-              newToContent = obj :: LinkedGrid.axisGetAt to axis
-              --dummy2 = Debug.log "move" [fromContent, newToContent]
-            in
-              Just
-                ( axis
-    -- could optimise to not replace grid twice
-                    |> LinkedGrid.axisSetAt from newFromContent
-                    |> LinkedGrid.axisSetAt to newToContent
-                )
-
-          _ -> Nothing
-
-    --dummy3 = Debug.log "move (after)"
-    --  ( case result of 
-    --    Just newAxis -> 
-    --      [ LinkedGrid.axisOrigin newAxis |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
-    --      , LinkedGrid.axisGetAt -1 newAxis |> cellDebugString
-    --      , LinkedGrid.axisGetAt 0 newAxis |> cellDebugString
-    --      , LinkedGrid.axisGetAt 1 newAxis |> cellDebugString
-    --      ]
-    --    _ -> ["failed"]
-    --  )
-
   in
-    result
+    case List.Extra.find (Tuple.first >> ((==) id)) fromContent of
+        Just obj -> 
+          let
+            newFromContent = List.filter (Tuple.first >> ((/=) id)) fromContent
+            newToContent = obj :: LinkedGrid.axisGetAt to axis
+          in
+            Just
+              ( axis
+  -- could optimise to not replace grid twice
+                  |> LinkedGrid.axisSetAt from newFromContent
+                  |> LinkedGrid.axisSetAt to newToContent
+              )
 
-
--- say each object is (id, char), move from one cell to another:
-    -- should be easy!
-
+        _ -> Nothing
 
 
 clearCellAt offset = LinkedGrid.axisSetAt offset []
@@ -265,17 +241,11 @@ roll =
 
 flipCellDirection : Axis -> Axis
 flipCellDirection loc =
-  let
-    result = loc
-      |> LinkedGrid.axisGet
-      |> List.map (\obj -> flipDir obj |> Maybe.withDefault obj)
-      |> (\cell -> LinkedGrid.axisSet cell loc)
-      |> LinkedGrid.flipAxis
-
-    --dummy = Debug.log "flipCellDirection"
-    --  [LinkedGrid.axisGet loc, LinkedGrid.axisGet result] 
-  in
-    result
+  loc
+    |> LinkedGrid.axisGet
+    |> List.map (\obj -> flipDir obj |> Maybe.withDefault obj)
+    |> (\cell -> LinkedGrid.axisSet cell loc)
+    |> LinkedGrid.flipAxis
 
 isJust maybe = case maybe of
   Just _ -> True
@@ -300,25 +270,18 @@ moveAndPush objectId axisWithMoveAtOrigin =
       let
         moveFunc : Object -> Axis -> Axis
         moveFunc ((id, _) as obj) axis =
-          let
-            dummy = Nothing -- Debug.log "push" [id, if isPush obj then 1 else 0]
-          in
-            if isPush obj
-              then
-                Maybe.withDefault axis (moveToCell id -1 0 axis)
-                --addToCellUnique obj axis
-              else
-                axis
+          if isPush obj
+            then
+              Maybe.withDefault axis (moveToCell id -1 0 axis)
+              --addToCellUnique obj axis
+            else
+              axis
 
-        updatedAxis = LinkedGrid.axisGetAt -1 adjoiningAxis
-                        |> List.foldr moveFunc adjoiningAxis
-        result = LinkedGrid.axisForward -1 updatedAxis
-
-        ( x, y ) = LinkedGrid.axisOrigin updatedAxis |> LinkedGrid.getLocationCoordinates
-        --dummy4 = Debug.log "doPush result"
-        --  [ if isJust result then 1 else 0, x, y ]
       in
-        result
+        LinkedGrid.axisGetAt -1 adjoiningAxis
+          |> List.foldr moveFunc adjoiningAxis
+          |> LinkedGrid.axisForward -1
+
 
     pushChain : Axis -> Bool -> Maybe (Axis)
     pushChain prevAxis shouldPush = 
@@ -330,27 +293,9 @@ moveAndPush objectId axisWithMoveAtOrigin =
           in
             -- found a(nother) push Cell, keep going
             if hasPush contents then
-              let
-                result = pushChain axis True
-
-                --dummy2 = Debug.log "follow pushes (after)"
-                --  ( case result of 
-                --    Just newAxis -> 
-                --      [ LinkedGrid.axisOrigin newAxis |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
-                --      , LinkedGrid.axisGetAt -1 newAxis |> cellDebugString
-                --      , LinkedGrid.axisGetAt 0 newAxis |> cellDebugString
-                --      , LinkedGrid.axisGetAt 1 newAxis |> cellDebugString
-                --      ]
-                --    _ -> ["failed"]
-                --  )
-                --dummy1 = Debug.log "follow pushes (before)"
-                --  [ LinkedGrid.axisOrigin axis |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
-                --  , LinkedGrid.axisGetAt -1 axis |> cellDebugString
-                --  , LinkedGrid.axisGetAt 0 axis |> cellDebugString
-                --  , LinkedGrid.axisGetAt 1 axis |> cellDebugString
-                --  ]
-              in
-                Maybe.andThen (if shouldPush then doPush else LinkedGrid.axisForward -1) result
+              Maybe.andThen
+                (if shouldPush then doPush else LinkedGrid.axisForward -1)
+                (pushChain axis True)
 
             -- found stop, so nothing moves
             else if hasStop contents then Nothing
@@ -374,20 +319,6 @@ moveAndPush objectId axisWithMoveAtOrigin =
 
         updatedAxis -> updatedAxis
 
-    --dummy4 = Debug.log "original axis"
-    --        [ LinkedGrid.axisOrigin axisWithMoveAtOrigin |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
-    --        ]
-
-    --dummy3 = Debug.log "push result"
-    --    ( case pushResult of 
-    --        Just newAxis -> 
-    --          [ LinkedGrid.axisOrigin newAxis |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
-    --          , LinkedGrid.axisGetAt 0 newAxis |> cellDebugString
-    --          , LinkedGrid.axisGetAt 1 newAxis |> cellDebugString
-    --          , LinkedGrid.axisGetAt 2 newAxis |> cellDebugString
-    --          ]
-    --        _ -> ["failed"]
-    --    )
   in
     -- finally move the move object itself
     pushResult |> Maybe.andThen (moveToCell objectId 0 1)
@@ -395,8 +326,6 @@ moveAndPush objectId axisWithMoveAtOrigin =
 doMovesAndPushes : Grid -> Grid
 doMovesAndPushes initialGrid =
   let
-    dummy = Debug.log "char counts" <| countChars initialGrid
-
     -- find moves
     moveCoords : List ( Int, Int, List Object )
     moveCoords =
@@ -429,7 +358,6 @@ doMovesAndPushes initialGrid =
               ( Just location, Just direction )
                 -> moveAndPush id (LinkedGrid.makeAxis location direction)
               _ -> Nothing
-            --dummy2 = Debug.log "doMovesAndPushes" [isJust maybeUpdatedAxis]
           in
             case maybeUpdatedAxis of 
               Just updatedAxis -> LinkedGrid.gridFromAxis updatedAxis
@@ -643,17 +571,11 @@ init msg =
 update : Msg -> Model -> Model 
 update msg model =
   case msg of
-    Update _ -> List.map doMovesAndPushes model
-      --let
-      --  counts = case model of
-      --    first :: _ -> countChars first
-      --    _ -> []
-      --  dummy = Debug.log "char counts" counts
+    Update _
+      -> List.map doMovesAndPushes model
 
-      --in
-      --  List.map doMovesAndPushes model
-
-    RandomGrid chars -> (makeRandomGrid chars) :: model
+    RandomGrid chars
+      -> (makeRandomGrid chars) :: model
 
 subscription : (Msg -> msg) -> Sub msg
 subscription msg = Time.every 300 (Update >> msg)
