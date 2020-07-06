@@ -43,33 +43,47 @@ flipObjectAndAxis objectId axis =
         |> (\cell -> LinkedGrid.axisSet cell axis)
         |> LinkedGrid.flipAxis
 
-type NextAxisResult = PushNext Axis | StopNext | SomethingElse
 
+maybeOrLazy ma f =
+    case ma of
+        Just a ->
+            Just a
 
+        _ ->
+            f ()
 
-moveAndPush : Int -> Axis -> Maybe (Axis)
-moveAndPush objectId axisWithMoveAtOrigin =
+maybeOrElseLazy f ma =
+    case ma of
+        Just a ->
+            Just a
+
+        _ ->
+            f ()
+
+moveOnAxisByVerb : Verb -> Axis -> Axis
+moveOnAxisByVerb verb axis = 
     let
-        doPush : Axis -> Maybe Axis 
-        doPush adjoiningAxis =
-            let
-                moveFunc : Object -> Axis -> Axis
-                moveFunc object axis =
-                    if objectIs Push object then
-                        ensure axis [object] <| moveToCell (getObjectId object) 0 1 axis
-                    else
-                        let
-                            dummy = Debug.log "push" ["non-push thing in push cell"]
-                        in
-                        axis
+        moveFunc : Object -> Axis -> Axis
+        moveFunc object toAxis =
+            if objectIs verb object then
+                axis
+                    |> moveToCell (getObjectId object) 0 1 (Just (LinkedGrid.getAxisDirection axis))
+                    |> ensure axis [object]
+            else
+                toAxis
+    in
+        LinkedGrid.axisGet axis
+            |> List.foldr moveFunc axis
 
-            in
-            LinkedGrid.axisGet adjoiningAxis
-                |> List.foldr moveFunc adjoiningAxis
+
+push : Axis -> Maybe (Axis)
+push axisWithMoveAtOrigin =
+    let
+        doPush : Axis -> Axis 
+        doPush axis =
+            moveOnAxisByVerb Push axis
                 |> LinkedGrid.axisForward -1
-
-        pushChain : Axis -> Maybe (Axis)
-        pushChain axis = followPushes axis |> Maybe.andThen doPush
+                |> ensure axis [axis]
 
         followPushes fromAxis = 
             case LinkedGrid.axisForward 1 fromAxis of
@@ -80,10 +94,10 @@ moveAndPush objectId axisWithMoveAtOrigin =
                     in
                     -- found a(nother) push Cell, keep going
                     if cellHas Push contents then
-                        pushChain axis
+                        followPushes axis |> Maybe.map doPush
 
                     -- found stop, so nothing moves
-                    else if cellHas Stop contents then
+                    else if cellHasAny [Pull, Stop] contents then
                         Nothing
 
                     else
@@ -92,20 +106,38 @@ moveAndPush objectId axisWithMoveAtOrigin =
                 -- treat boundary as stop
                 _ -> Nothing
 
-
-        pushResult = 
-            case followPushes axisWithMoveAtOrigin of
-                Nothing -> 
-                    flipCellDirection axisWithMoveAtOrigin
-                        |> followPushes
-
-                updatedAxis -> updatedAxis
-
+        flipThenPush () = flipCellDirection axisWithMoveAtOrigin |> followPushes
     in
-    -- finally move the move object itself
-    pushResult |> Maybe.andThen (moveToCell objectId 0 1)
+    followPushes axisWithMoveAtOrigin |> maybeOrElseLazy flipThenPush
 
--- TRY TO REMOVE shouldPush!!!
+pull : Axis -> Axis
+pull axisWithMoveAtOrigin =
+    let
+        doPull : Axis -> Axis
+        doPull axis =
+            moveOnAxisByVerb Pull axis
+                |> LinkedGrid.axisForward 1
+                |> ensure axis [axis]
+
+        followPulls : Axis -> Axis
+        followPulls fromAxis = 
+            case LinkedGrid.axisForward -1 fromAxis of
+                Just axis ->
+                    let
+                        -- look what's in the cell
+                        contents = LinkedGrid.axisGet axis
+                    in
+                    -- found a(nother) pull Cell, keep going
+                    if cellHas Pull contents then
+                        followPulls axis |> doPull
+
+                    else
+                        fromAxis
+
+                -- boundary case
+                _ -> fromAxis
+    in
+    followPulls axisWithMoveAtOrigin
 
 doMovesAndPushes : Grid -> Grid
 doMovesAndPushes initialGrid =
@@ -141,7 +173,9 @@ doMovesAndPushes initialGrid =
                         maybeUpdatedAxis = case LinkedGrid.at x y innerGrid of
                             Just location ->
                                 LinkedGrid.makeAxis location direction
-                                    |> moveAndPush (getObjectId object)
+                                    |> push
+                                    |> Maybe.andThen (moveToCell (getObjectId object) 0 1 Nothing)
+                                    |> Maybe.map pull
 
                             _ ->
                                 Nothing

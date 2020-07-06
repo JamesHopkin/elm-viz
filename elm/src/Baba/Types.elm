@@ -46,6 +46,9 @@ verbDebugString v = case v of
 is : Verb -> Int -> Bool
 is v n = Bitwise.and (flagFor v) n /= 0
 
+isAny : List Verb -> Int -> Bool
+isAny v n = Bitwise.and (flagsFor v) n /= 0
+
 flagFor : Verb -> Int
 flagFor v = case v of
     Push    -> 0x0001
@@ -58,3 +61,6 @@ flagFor v = case v of
     Closed  -> 0x0080
     Float_  -> 0x0100
     _       -> 0x0200
+
+flagsFor : List Verb -> Int
+flagsFor verbs = List.foldr (flagFor >> Bitwise.or) 0 verbs

@@ -1,6 +1,7 @@
 module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveToCell,
-                            objectIs, cellHas, asText, asVerb,
+                            objectIs, objectIsAny, cellHas, cellHasAny, asText, asVerb,
                             getObjectId, getObjectWord, getObjectDirection, makeObject, makeDirectedObject,
+                            setObjectDirection, setObjectIs, 
                             flipDir,
                             cellDebugString, stringListToCells, verbFromOccupant )
 
@@ -49,6 +50,9 @@ getObjectWord object = case object of
 getObjectDirection object = case object of
     Object _ _ direction _ -> direction
 
+setObjectDirection direction object = case object of
+    Object id word _ flags -> Object id word direction flags
+
 getObjectFlags object = case object of
     Object _ _ _ flags -> flags
 
@@ -67,21 +71,25 @@ isJust m = case m of
     Just _ -> True
     _ -> False
 
-moveToCell : Int -> Int -> Int -> Axis -> Maybe Axis
-moveToCell id from to axis =
+moveToCell : Int -> Int -> Int -> Maybe Direction -> Axis -> Maybe Axis
+moveToCell id from to maybeDirection axis =
     let
         fromContent = LinkedGrid.axisGetAt from axis
 
-        dummy0 = Debug.log "move from content" fromContent
+        --dummy0 = Debug.log "move from content" fromContent
         maybeObj = List.Extra.find (getObjectId >> ((==) id)) fromContent
-        dummy = Debug.log "move ids" [id, from, to, if isJust maybeObj then 1 else 0]
+        --dummy = Debug.log "move ids" [id, from, to, if isJust maybeObj then 1 else 0]
 
     
         result = case maybeObj of
                 Just obj -> 
                     let
+                        objToAdd = case maybeDirection of
+                            Just newDirection -> setObjectDirection newDirection obj
+                            _ -> obj
+
                         newFromContent = List.filter (getObjectId >> ((/=) id)) fromContent
-                        newToContent = obj :: LinkedGrid.axisGetAt to axis
+                        newToContent = objToAdd :: LinkedGrid.axisGetAt to axis
                     in
                         Just
                             ( axis
@@ -92,16 +100,16 @@ moveToCell id from to axis =
 
                 _ -> Nothing
 
-        dummy3 = Debug.log "move (after)"
-          ( case result of 
-            Just newAxis -> 
-              [ LinkedGrid.axisOrigin newAxis |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
-              , LinkedGrid.axisGetAt -1 newAxis |> cellDebugString
-              , LinkedGrid.axisGetAt 0 newAxis |> cellDebugString
-              , LinkedGrid.axisGetAt 1 newAxis |> cellDebugString
-              ]
-            _ -> ["failed"]
-          )
+        --dummy3 = Debug.log "move (after)"
+        --  ( case result of 
+        --    Just newAxis -> 
+        --      [ LinkedGrid.axisOrigin newAxis |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
+        --      , LinkedGrid.axisGetAt -1 newAxis |> cellDebugString
+        --      , LinkedGrid.axisGetAt 0 newAxis |> cellDebugString
+        --      , LinkedGrid.axisGetAt 1 newAxis |> cellDebugString
+        --      ]
+        --    _ -> ["failed"]
+        --  )
     in
     result
 
@@ -124,8 +132,14 @@ flipDir object = case object of
 objectIs : Verb -> Object -> Bool
 objectIs verb object = is verb (getObjectFlags object)
 
+objectIsAny : List Verb -> Object -> Bool
+objectIsAny verbs object = isAny verbs (getObjectFlags object)
+
 cellHas : Verb -> Cell -> Bool
 cellHas verb cell = List.any (objectIs verb) cell
+
+cellHasAny : List Verb -> Cell -> Bool
+cellHasAny verbs cell = List.any (objectIsAny verbs) cell
 
 
 asText : Cell -> Maybe Char
@@ -147,7 +161,7 @@ asVerb cell =
 
 showIds = False
 showAllContents = False
-
+showDirections = True
 
 objectDebugChar : Object -> Char
 objectDebugChar object =
@@ -167,6 +181,17 @@ cellDebugString cell =
     if showIds then
         List.map (getObjectId >> String.fromInt) cell
          |> String.join ""
+    else if showDirections then 
+        Maybe.withDefault "· " (Maybe.map
+            (\obj -> String.fromChar (getObjectWord obj) ++ (case getObjectDirection obj of
+                Up -> "↑"
+                Right -> "→"
+                Down -> "↓"
+                Left -> "←"
+            ))
+            (List.head cell)
+            )
+
     else
         let
             toString c = String.fromChar (if c == '·' then '!' else c)

@@ -137,21 +137,20 @@ generator =
 update : Msg -> Model -> Model 
 update msg model =
     case msg of
-        Update _ -> model
-            ---> 
-            --    let
-            --        dummy = Debug.log "object counts" <| case List.head model of
-            --            Just grid -> countChars grid
-            --            _ -> []
-            --    in
-            --    List.map doMovesAndPushes model
+        Update _ ->
+                let
+                    dummy = Debug.log "object counts" <| case List.head model of
+                        Just grid -> countChars grid
+                        _ -> []
+                in
+                List.map doMovesAndPushes model
 
-        RandomGrid chars -> model
-            ---> (makeRandomGrid chars) :: model
+        RandomGrid chars ->
+                (makeRandomGrid chars) :: model
 
 subscription : (Msg -> msg) -> Sub msg
 subscription msg = Time.every 300 (Update >> msg)
 
-randomGridSize = 10
+randomGridSize = 20
 
 
