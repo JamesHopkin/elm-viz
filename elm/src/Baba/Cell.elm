@@ -1,6 +1,7 @@
 module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveToCell,
-                            isMove, hasMove, isPush, hasPush, isStop, hasStop, asText, asVerb,
-                            getObjectId, flipDir, moveDir,
+                            objectIs, cellHas, asText, asVerb,
+                            getObjectId, getObjectWord, getObjectDirection, makeObject, makeDirectedObject,
+                            flipDir,
                             cellDebugString, stringListToCells, verbFromOccupant )
 
 import List.Extra
@@ -8,22 +9,52 @@ import List.Extra
 import Baba.Types exposing (..)
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
 
-type alias Object = ( Int, Char )
 type alias Cell = List Object
 type alias Location = LinkedGrid.Location Cell
 
 type alias Grid = LinkedGrid.LinkedGrid Cell
 type alias Axis = LinkedGrid.Axis Cell
 
+
+type Object = Object Int Char Direction Int
+
 emptyCell : Cell
 emptyCell = []
+
+
 
 clearCellAt offset = LinkedGrid.axisSetAt offset []
 clearCell = clearCellAt 0
 
+-- use id to pick direction
+makeObject id c =
+    let
+        dir = case remainderBy 4 id of
+            0 -> Up
+            1 -> Right
+            2 -> Down
+            _ -> Left
+    in
+    Object id c dir 0
 
-getObjectId ( id, _ ) = id
+makeDirectedObject id c direction =
+    Object id c direction 0
 
+getObjectId object = case object of
+    Object id _ _ _ -> id
+
+getObjectWord object = case object of
+    Object _ word _ _ -> word
+
+getObjectDirection object = case object of
+    Object _ _ direction _ -> direction
+
+getObjectFlags object = case object of
+    Object _ _ _ flags -> flags
+
+setObjectIs verb object = case object of
+    Object id word direction _ ->
+        Object id word direction (flagFor verb)
 
 addToCellAt offset object axis =
     let
@@ -39,10 +70,10 @@ moveToCell id from to axis =
         fromContent = LinkedGrid.axisGetAt from axis
     
     in
-        case List.Extra.find (Tuple.first >> ((==) id)) fromContent of
+        case List.Extra.find (getObjectId >> ((==) id)) fromContent of
                 Just obj -> 
                     let
-                        newFromContent = List.filter (Tuple.first >> ((/=) id)) fromContent
+                        newFromContent = List.filter (getObjectId >> ((/=) id)) fromContent
                         newToContent = obj :: LinkedGrid.axisGetAt to axis
                     in
                         Just
@@ -65,51 +96,32 @@ verbFromOccupant c = case c of
     'F' -> Float_
     _ -> You
 
-moveDir ( _, c ) = case c of
-    '←' -> Just Left
-    '↑' -> Just Up
-    '→' -> Just Right
-    '↓' -> Just Down
-    _ -> Nothing
 
-flipDir ( id, c ) = case c of
-    '←' -> Just ( id, '→' )
-    '↑' -> Just ( id, '↓' )
-    '→' -> Just ( id, '←' )
-    '↓' -> Just ( id, '↑' )
-    _ -> Nothing
+flipDir : Object -> Object
+flipDir object = case object of
+    Object id word direction flags ->
+        Object id word (LinkedGrid.flipDir direction) flags
 
-isMove obj = case moveDir obj of
-    Nothing -> False
-    _ -> True
+objectIs : Verb -> Object -> Bool
+objectIs verb object = is verb (getObjectFlags object)
 
-hasMove = List.any isMove
+cellHas : Verb -> Cell -> Bool
+cellHas verb cell = List.any (objectIs verb) cell
 
-isPush ( _, c ) = c == 'P'
-hasPush cell = List.any isPush cell
 
-isStop ( _, c ) = c == 'S'
-hasStop cell = List.any isStop cell
-
+asText : Cell -> Maybe Char
 asText cell =
-    let
-        filtered = cell
-            |> List.map Tuple.second
-            |> List.filter Char.isAlpha
-    in
-        case filtered of
-            first :: rest -> Just first
-            _ -> Nothing
+    cell
+        |> List.map getObjectWord
+        |> List.filter Char.isAlpha
+        |> List.head
 
+asVerb : Cell -> Maybe Char
 asVerb cell =
-    let
-        filtered = cell
-            |> List.map Tuple.second
-            |> List.filter Char.isUpper
-    in
-        case filtered of
-            first :: rest -> Just first
-            _ -> Nothing
+    cell
+        |> List.map getObjectWord
+        |> List.filter Char.isUpper
+        |> List.head
 
 
 
@@ -117,15 +129,29 @@ asVerb cell =
 showIds = False
 showAllContents = False
 
--- char of arbitrary item at the moment
+
+objectDebugChar : Object -> Char
+objectDebugChar object =
+    if objectIs Move object then
+        case getObjectDirection object of
+            Up -> '↑'
+            Right -> '→'
+            Down -> '↓'
+            Left -> '←'
+
+    else
+        getObjectWord object
+
+
+cellDebugString : Cell -> String
 cellDebugString cell =
     if showIds then
-        List.map (\( id, c ) -> String.fromInt id) cell
+        List.map (getObjectId >> String.fromInt) cell
          |> String.join ""
     else
         let
             toString c = String.fromChar (if c == '·' then '!' else c)
-            chars = List.map Tuple.second cell
+            chars = List.map objectDebugChar cell
         in
             if showAllContents then
                 case chars of
@@ -144,8 +170,39 @@ stringListToCells rows =
     let
         makeCell : Char -> ( Int, List Cell ) -> ( Int, List Cell )
         makeCell c ( index, outRow ) =
-            if c == '·' then ( index, [] :: outRow )
-            else ( index + 1, [( index, c )] :: outRow )
+            if c == '·' then
+                ( index, [] :: outRow )
+
+            else
+                let newObject = case c of
+                        '↑' ->
+                            makeDirectedObject index 'm' Up
+                                |> setObjectIs Move
+
+                        '→' ->
+                            makeDirectedObject index 'm' Right
+                                |> setObjectIs Move
+
+                        '↓' ->
+                            makeDirectedObject index 'm' Down
+                                |> setObjectIs Move
+
+                        '←' ->
+                            makeDirectedObject index 'm' Left
+                                |> setObjectIs Move
+
+                        'S' ->
+                            makeObject index c
+                                |> setObjectIs Stop
+
+                        'P' ->
+                            makeObject index c
+                                |> setObjectIs Push
+
+                        _ ->
+                            makeObject index c
+                in
+                ( index + 1, [newObject] :: outRow )
 
         makeRow : String -> ( Int, List (List Cell) ) -> ( Int, List (List Cell) )
         makeRow s ( initialIndex, outRows ) =
@@ -157,4 +214,3 @@ stringListToCells rows =
     in
         --List.foldr (String.toList >> (List.foldr makeCell) >> Tuple.second) ( 0, [] ) rows
         List.foldr makeRow ( 0, [] ) rows |> Tuple.second
-

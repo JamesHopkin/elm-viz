@@ -6,13 +6,22 @@ import Baba.Cell exposing (..)
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
 import Baba.Types exposing (..)
 
-ensure = Maybe.withDefault (Debug.todo "ensure failure")
+ensure default ls maybeResult =
+    case maybeResult of
+        Just result ->
+            result
+
+        _ ->
+            let
+                dummy = Debug.log "ensure" ls
+            in
+            default
 
 flipCellDirection : Axis -> Axis
 flipCellDirection loc =
     loc
         |> LinkedGrid.axisGet
-        |> List.map (\obj -> flipDir obj |> Maybe.withDefault obj)
+        |> List.map flipDir
         |> (\cell -> LinkedGrid.axisSet cell loc)
         |> LinkedGrid.flipAxis
 
@@ -23,17 +32,16 @@ flipObjectAndAxis objectId axis =
     let
         flip obj =
             if getObjectId obj == objectId then
-                    ensure (flipDir obj)
+                    flipDir obj
 
             else
                     obj
-
     in
-        axis
-            |> LinkedGrid.axisGet
-            |> List.map flip
-            |> (\cell -> LinkedGrid.axisSet cell axis)
-            |> LinkedGrid.flipAxis
+    axis
+        |> LinkedGrid.axisGet
+        |> List.map flip
+        |> (\cell -> LinkedGrid.axisSet cell axis)
+        |> LinkedGrid.flipAxis
 
 
 moveAndPush : Int -> Axis -> Maybe (Axis)
@@ -43,18 +51,16 @@ moveAndPush objectId axisWithMoveAtOrigin =
         doPush adjoiningAxis =
             let
                 moveFunc : Object -> Axis -> Axis
-                moveFunc ((id, _) as obj) axis =
-                    if isPush obj
-                        then
-                            Maybe.withDefault axis (moveToCell id -1 0 axis)
-                            --addToCellUnique obj axis
-                        else
-                            axis
+                moveFunc object axis =
+                    if objectIs Push object then
+                        ensure axis [object] <| moveToCell (getObjectId object) -1 0 axis
+                    else
+                        axis
 
             in
-                LinkedGrid.axisGetAt -1 adjoiningAxis
-                    |> List.foldr moveFunc adjoiningAxis
-                    |> LinkedGrid.axisForward -1
+            LinkedGrid.axisGetAt -1 adjoiningAxis
+                |> List.foldr moveFunc adjoiningAxis
+                |> LinkedGrid.axisForward -1
 
 
         pushChain : Axis -> Bool -> Maybe (Axis)
@@ -66,19 +72,19 @@ moveAndPush objectId axisWithMoveAtOrigin =
                         contents = LinkedGrid.axisGet axis
  
                     in
-                        -- found a(nother) push Cell, keep going
-                        if hasPush contents then
-                            Maybe.andThen
-                                (if shouldPush then doPush else LinkedGrid.axisForward -1)
-                                (pushChain axis True)
+                    -- found a(nother) push Cell, keep going
+                    if cellHas Push contents then
+                        Maybe.andThen
+                            (if shouldPush then doPush else LinkedGrid.axisForward -1)
+                            (pushChain axis True)
 
-                        -- found stop, so nothing moves
-                        else if hasStop contents then Nothing
+                    -- found stop, so nothing moves
+                    else if cellHas Stop contents then Nothing
 
-                        -- done searching (calling code will do move)
-                        else if shouldPush then doPush axis
+                    -- done searching (calling code will do move)
+                    else if shouldPush then doPush axis
 
-                        else LinkedGrid.axisForward -1 axis
+                    else LinkedGrid.axisForward -1 axis
 
                 -- treat boundary as stop
                 _ -> Nothing
@@ -95,8 +101,8 @@ moveAndPush objectId axisWithMoveAtOrigin =
                 updatedAxis -> updatedAxis
 
     in
-        -- finally move the move object itself
-        pushResult |> Maybe.andThen (moveToCell objectId 0 1)
+    -- finally move the move object itself
+    pushResult |> Maybe.andThen (moveToCell objectId 0 1)
 
 doMovesAndPushes : Grid -> Grid
 doMovesAndPushes initialGrid =
@@ -108,38 +114,41 @@ doMovesAndPushes initialGrid =
                 addIfMove : Location -> List ( Int, Int, List Object ) -> List ( Int, Int, List Object )
                 addIfMove loc acc =
                     let
-                        movingContent = List.filter isMove (LinkedGrid.getContents loc)
+                        movingContent = List.filter (objectIs Move) (LinkedGrid.getContents loc)
                         ( x, y ) = LinkedGrid.getLocationCoordinates loc
 
                     in
-                        case movingContent of 
-                            [] -> acc
-                            _ -> ( x, y, movingContent ) :: acc
+                    case movingContent of 
+                        [] -> acc
+                        _ -> ( x, y, movingContent ) :: acc
 
             in
-                LinkedGrid.foldLocations addIfMove [] initialGrid
+            LinkedGrid.foldLocations addIfMove [] initialGrid
 
         impl : ( Int, Int, List Object ) -> Grid -> Grid
         impl ( x, y, movingObjects ) grid =
             let
-                getDirection obj = Maybe.withDefault Up (moveDir obj)
 
                 -- list of objects, grid is accumulator (will need additional state to record what got stuck)
                 moveFoldFunc : Object -> Grid -> Grid
-                moveFoldFunc (( id, c ) as object) innerGrid =
+                moveFoldFunc object innerGrid =
                     let
                         -- get location and direction, will never use Nothing case
-                        maybeUpdatedAxis = case ( LinkedGrid.at x y innerGrid, moveDir object ) of
-                            ( Just location, Just direction )
-                                -> moveAndPush id (LinkedGrid.makeAxis location direction)
-                            _ -> Nothing
+                        direction = getObjectDirection object
+                        maybeUpdatedAxis = case LinkedGrid.at x y innerGrid of
+                            Just location ->
+                                LinkedGrid.makeAxis location direction
+                                    |> moveAndPush (getObjectId object)
+
+                            _ ->
+                                Nothing
                     in
-                        case maybeUpdatedAxis of 
-                            Just updatedAxis -> LinkedGrid.gridFromAxis updatedAxis
-                            _ -> innerGrid
+                    case maybeUpdatedAxis of 
+                        Just updatedAxis -> LinkedGrid.gridFromAxis updatedAxis
+                        _ -> innerGrid
 
             in
-                List.foldr moveFoldFunc grid movingObjects
+            List.foldr moveFoldFunc grid movingObjects
 
     in
-        List.foldr impl initialGrid moveCoords
+    List.foldr impl initialGrid moveCoords

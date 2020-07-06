@@ -6,7 +6,7 @@ import Baba.Types exposing (..)
 
 tempGetFirst cell = case cell of
     first :: rest -> first
-    _ -> ( -1, '$' ) -- need to fix if these start coming out
+    _ -> makeObject -1 '$' -- need to fix if these start coming out
 
 surrounding : 
     (el -> el -> el -> acc -> acc)
@@ -39,13 +39,14 @@ lookForRulesOnAxis axis =
                 ( _, _, Nothing ) -> a
                 _ ->
                     let
-                        ( _, firstX ) = tempGetFirst x
-                        ( _, firstZ ) = tempGetFirst z
+                        firstX = getObjectWord (tempGetFirst x)
+                        firstY = getObjectWord (tempGetFirst y)
+                        firstZ = getObjectWord (tempGetFirst z)
                     in
-                        case ( tempGetFirst y, asVerb z ) of
-                            ( ( _, '=' ), Just zVerb ) -> Is      firstX (verbFromOccupant zVerb) :: a
-                            ( ( _, '='), Nothing )     -> Becomes firstX firstZ                   :: a
-                            ( ( _, '<'), Nothing )     -> Has     firstX firstZ                   :: a
+                        case ( firstY, asVerb z ) of
+                            ( '=', Just zVerb ) -> Is      firstX (verbFromOccupant zVerb) :: a
+                            ( '=', Nothing )    -> Becomes firstX firstZ                   :: a
+                            ( '<', Nothing )    -> Has     firstX firstZ                   :: a
                             _ -> a
     in
         surrounding impl [] axis

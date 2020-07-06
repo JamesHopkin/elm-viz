@@ -99,6 +99,7 @@ movesTestGrid = LinkedGrid.fromLists emptyCell 7 7
         ]
     )
 
+gridToStr : Grid -> String
 gridToStr = LinkedGrid.toDebugString cellDebugString
 
 testRows =
