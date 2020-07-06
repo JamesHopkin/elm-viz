@@ -18,6 +18,7 @@ type Conjuction
 
 type Verb
     = Push
+    | Pull
     | Move
     | Stop
     | Defeat
@@ -29,6 +30,7 @@ type Verb
 
 verbDebugString v = case v of
     Push -> "push"
+    Pull -> "pull"
     Move -> "move"
     Stop -> "stop"
     Defeat -> "defeat"
@@ -47,11 +49,12 @@ is v n = Bitwise.and (flagFor v) n /= 0
 flagFor : Verb -> Int
 flagFor v = case v of
     Push    -> 0x0001
-    Move    -> 0x0002
-    Stop    -> 0x0004
-    Defeat  -> 0x0008
-    Win     -> 0x0010
-    Open    -> 0x0020
-    Closed  -> 0x0040
-    Float_  -> 0x0080
-    _       -> 0x0100
+    Pull    -> 0x0002
+    Move    -> 0x0004
+    Stop    -> 0x0008
+    Defeat  -> 0x0010
+    Win     -> 0x0020
+    Open    -> 0x0040
+    Closed  -> 0x0080
+    Float_  -> 0x0100
+    _       -> 0x0200

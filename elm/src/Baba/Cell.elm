@@ -63,14 +63,21 @@ addToCellAt offset object axis =
         LinkedGrid.axisSet newContents axis
 addToCell = addToCellAt 0
 
+isJust m = case m of
+    Just _ -> True
+    _ -> False
 
 moveToCell : Int -> Int -> Int -> Axis -> Maybe Axis
 moveToCell id from to axis =
     let
         fromContent = LinkedGrid.axisGetAt from axis
+
+        dummy0 = Debug.log "move from content" fromContent
+        maybeObj = List.Extra.find (getObjectId >> ((==) id)) fromContent
+        dummy = Debug.log "move ids" [id, from, to, if isJust maybeObj then 1 else 0]
+
     
-    in
-        case List.Extra.find (getObjectId >> ((==) id)) fromContent of
+        result = case maybeObj of
                 Just obj -> 
                     let
                         newFromContent = List.filter (getObjectId >> ((/=) id)) fromContent
@@ -85,6 +92,18 @@ moveToCell id from to axis =
 
                 _ -> Nothing
 
+        dummy3 = Debug.log "move (after)"
+          ( case result of 
+            Just newAxis -> 
+              [ LinkedGrid.axisOrigin newAxis |> LinkedGrid.getLocationCoordinates |> (\( x, y ) -> String.fromInt x ++ ", " ++ String.fromInt y)
+              , LinkedGrid.axisGetAt -1 newAxis |> cellDebugString
+              , LinkedGrid.axisGetAt 0 newAxis |> cellDebugString
+              , LinkedGrid.axisGetAt 1 newAxis |> cellDebugString
+              ]
+            _ -> ["failed"]
+          )
+    in
+    result
 
 verbFromOccupant c = case c of
     'P' -> Push
@@ -198,6 +217,10 @@ stringListToCells rows =
                         'P' ->
                             makeObject index c
                                 |> setObjectIs Push
+
+                        'L' ->
+                            makeObject index c
+                                |> setObjectIs Pull
 
                         _ ->
                             makeObject index c

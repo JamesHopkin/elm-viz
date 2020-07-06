@@ -2,6 +2,7 @@ module Baba.BabaTest exposing ( Model, Msg, init, update, subscription,
                                 problemGraphEvo, gridToStr,
                                 rulesTestGridDebugStr, rulesTestResult )
 
+import Baba.Baba exposing ( countChars )
 import Baba.Cell exposing (..)
 import Baba.Move exposing (..)
 import Baba.Rules as Rules exposing (..)
@@ -17,7 +18,7 @@ import Time
 testGrid = 
         --LinkedGrid.fromLists emptyCell 4 4
         --  (stringListToCells
-        --    [ "→PP→" ]
+        --    [ "→P" ]
         --  )
 
         --LinkedGrid.fromLists emptyCell 4 4
@@ -45,23 +46,23 @@ init msg =
 
 
 
-        , movesTestGrid
-        , LinkedGrid.fromLists emptyCell 7 7
-            (stringListToCells
-                [ ""
-                , "···↑·↑"
-                , "·P··↑"
-                , "·P·↑"
-                , "P↑"
-                , "↑"
-                ]
-            )
-        , LinkedGrid.fromLists emptyCell 4 4
-            (stringListToCells
-                [ "·↓"
-                , "··←"
-                ]
-            )
+        --, movesTestGrid
+        --, LinkedGrid.fromLists emptyCell 7 7
+        --    (stringListToCells
+        --        [ ""
+        --        , "···↑·↑"
+        --        , "·P··↑"
+        --        , "·P·↑"
+        --        , "P↑"
+        --        , "↑"
+        --        ]
+        --    )
+        --, LinkedGrid.fromLists emptyCell 4 4
+        --    (stringListToCells
+        --        [ "·↓"
+        --        , "··←"
+        --        ]
+        --    )
         ]
     , Random.generate (RandomGrid >> msg) generator
     )
@@ -128,23 +129,29 @@ type Msg
     = Update Time.Posix
     | RandomGrid (List Char)
 
-seed = Random.initialSeed 4
+seed = Random.initialSeed 1
 generator = 
-    Random.list (randomGridSize * randomGridSize) <| Random.uniform '·' (String.toList "························←↑→↓PPPPSS")
+    Random.list (randomGridSize * randomGridSize) <| Random.uniform '·' (String.toList "························←↑→↓PPPPSSL")
 
 
 update : Msg -> Model -> Model 
 update msg model =
     case msg of
-        Update _
-            -> List.map doMovesAndPushes model
+        Update _ -> model
+            ---> 
+            --    let
+            --        dummy = Debug.log "object counts" <| case List.head model of
+            --            Just grid -> countChars grid
+            --            _ -> []
+            --    in
+            --    List.map doMovesAndPushes model
 
-        RandomGrid chars
-            -> (makeRandomGrid chars) :: model
+        RandomGrid chars -> model
+            ---> (makeRandomGrid chars) :: model
 
 subscription : (Msg -> msg) -> Sub msg
 subscription msg = Time.every 300 (Update >> msg)
 
-randomGridSize = 20
+randomGridSize = 10
 
 

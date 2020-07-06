@@ -43,6 +43,9 @@ flipObjectAndAxis objectId axis =
         |> (\cell -> LinkedGrid.axisSet cell axis)
         |> LinkedGrid.flipAxis
 
+type NextAxisResult = PushNext Axis | StopNext | SomethingElse
+
+
 
 moveAndPush : Int -> Axis -> Maybe (Axis)
 moveAndPush objectId axisWithMoveAtOrigin =
@@ -53,44 +56,42 @@ moveAndPush objectId axisWithMoveAtOrigin =
                 moveFunc : Object -> Axis -> Axis
                 moveFunc object axis =
                     if objectIs Push object then
-                        ensure axis [object] <| moveToCell (getObjectId object) -1 0 axis
+                        ensure axis [object] <| moveToCell (getObjectId object) 0 1 axis
                     else
+                        let
+                            dummy = Debug.log "push" ["non-push thing in push cell"]
+                        in
                         axis
 
             in
-            LinkedGrid.axisGetAt -1 adjoiningAxis
+            LinkedGrid.axisGet adjoiningAxis
                 |> List.foldr moveFunc adjoiningAxis
                 |> LinkedGrid.axisForward -1
 
+        pushChain : Axis -> Maybe (Axis)
+        pushChain axis = followPushes axis |> Maybe.andThen doPush
 
-        pushChain : Axis -> Bool -> Maybe (Axis)
-        pushChain prevAxis shouldPush = 
-            case LinkedGrid.axisForward 1 prevAxis of
+        followPushes fromAxis = 
+            case LinkedGrid.axisForward 1 fromAxis of
                 Just axis ->
                     let
                         -- look what's in the cell
                         contents = LinkedGrid.axisGet axis
- 
                     in
                     -- found a(nother) push Cell, keep going
                     if cellHas Push contents then
-                        Maybe.andThen
-                            (if shouldPush then doPush else LinkedGrid.axisForward -1)
-                            (pushChain axis True)
+                        pushChain axis
 
                     -- found stop, so nothing moves
-                    else if cellHas Stop contents then Nothing
+                    else if cellHas Stop contents then
+                        Nothing
 
-                    -- done searching (calling code will do move)
-                    else if shouldPush then doPush axis
-
-                    else LinkedGrid.axisForward -1 axis
+                    else
+                        Just fromAxis
 
                 -- treat boundary as stop
                 _ -> Nothing
 
-        followPushes : Axis -> Maybe (Axis)
-        followPushes prevAxis = pushChain prevAxis False
 
         pushResult = 
             case followPushes axisWithMoveAtOrigin of
@@ -103,6 +104,8 @@ moveAndPush objectId axisWithMoveAtOrigin =
     in
     -- finally move the move object itself
     pushResult |> Maybe.andThen (moveToCell objectId 0 1)
+
+-- TRY TO REMOVE shouldPush!!!
 
 doMovesAndPushes : Grid -> Grid
 doMovesAndPushes initialGrid =
