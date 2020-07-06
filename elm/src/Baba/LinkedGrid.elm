@@ -1,4 +1,4 @@
-module LinkedGrid exposing ( LinkedGrid, toDebugString, Location, foldLocations, getLocationCoordinates,
+module Baba.LinkedGrid exposing ( LinkedGrid, toDebugString, Location, foldLocations, getLocationCoordinates,
                           make, Direction (..),
                           fromLists, at, getContents, setContents, above, right, below, left,
                           Axis, makeAxis, gridFromAxis, axisOrigin, axisGetAt, axisGet, axisSetAt, axisSet,

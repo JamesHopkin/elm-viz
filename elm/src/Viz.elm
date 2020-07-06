@@ -12,7 +12,8 @@ import Json.Decode as Decode
 import Graph
 import Dict exposing ( Dict )
 
-import Baba
+import Baba.Baba
+import Baba.BabaTest
 
 
 type alias RenderData =
@@ -55,7 +56,7 @@ type alias Model =
   { selected: List String
   , graph: Graph.Graph
   , state: GraphState
-  , baba: Baba.Model
+  , baba: Baba.BabaTest.Model
   }
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -70,7 +71,7 @@ update msg model =
 
 -- not forwarding commands yet
     BabaMsg babaMsg ->
-      ( { model | baba = Baba.update babaMsg model.baba }
+      ( { model | baba = Baba.BabaTest.update babaMsg model.baba }
         , Cmd.none
       )
 
@@ -96,7 +97,7 @@ initialGraph = Graph.makeGraph
 init : Flags -> ( Model, Cmd Msg )
 init _ =
   let
-    ( babaModel, babaCmd ) = Baba.init BabaMsg
+    ( babaModel, babaCmd ) = Baba.BabaTest.init BabaMsg
   in 
     ( { selected = []
       , graph = initialGraph
@@ -111,7 +112,7 @@ init _ =
 
 type Msg
   = GraphReceived
-  | BabaMsg Baba.Msg
+  | BabaMsg Baba.BabaTest.Msg
 
 
 -- update Baba every half second
@@ -119,7 +120,7 @@ type Msg
 subscriptions _ =
   Sub.batch
     [ notifyGraphRendered (\_ -> GraphReceived)
-    , Baba.subscription BabaMsg
+    , Baba.BabaTest.subscription BabaMsg
     ]
 
 
@@ -131,8 +132,8 @@ view model =
     [ h3 [] [ text "What's up with this?" ]
     , table [ class "table" ]
       [ tr []
-        (Baba.problemGraphEvo
-          |> List.map Baba.gridToStr
+        (Baba.BabaTest.problemGraphEvo
+          |> List.map Baba.BabaTest.gridToStr
           |> List.map tdFromString
         )
       ]
@@ -140,15 +141,15 @@ view model =
     , table [ class "table" ]
       [ tr []
         (model.baba
-          |> List.map Baba.gridToStr
+          |> List.map Baba.BabaTest.gridToStr
           |> List.map tdFromString
         )
       ]
     , h3 [] [ text "Rules test" ]
     , table [ class "table" ]
       [ tr []
-        [ tdFromString Baba.rulesTestGridDebugStr
-        , tdFromString Baba.rulesTestResult
+        [ tdFromString Baba.BabaTest.rulesTestGridDebugStr
+        , tdFromString Baba.BabaTest.rulesTestResult
         ]
       ]
     , text <| "Graph state: " ++ (
