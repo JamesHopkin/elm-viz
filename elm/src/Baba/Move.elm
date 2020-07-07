@@ -4,7 +4,7 @@ import Debug
 
 import Baba.Cell exposing (..)
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
-import Baba.Types exposing (..)
+import Baba.Types as Types
 
 ensure default ls maybeResult =
     case maybeResult of
@@ -52,20 +52,14 @@ maybeOrLazy ma f =
         _ ->
             f ()
 
-maybeOrElseLazy f ma =
-    case ma of
-        Just a ->
-            Just a
+maybeOrElseLazy f ma = maybeOrLazy ma f
 
-        _ ->
-            f ()
-
-moveOnAxisByVerb : Verb -> Axis -> Axis
-moveOnAxisByVerb verb axis = 
+moveOnAxisByStative : Types.Stative -> Axis -> Axis
+moveOnAxisByStative stative axis = 
     let
         moveFunc : Object -> Axis -> Axis
         moveFunc object toAxis =
-            if objectIs verb object then
+            if objectIs stative object then
                 axis
                     |> moveToCell (getObjectId object) 0 1 (Just (LinkedGrid.getAxisDirection axis))
                     |> ensure axis [object]
@@ -81,7 +75,7 @@ push axisWithMoveAtOrigin =
     let
         doPush : Axis -> Axis 
         doPush axis =
-            moveOnAxisByVerb Push axis
+            moveOnAxisByStative Types.Push axis
                 |> LinkedGrid.axisForward -1
                 |> ensure axis [axis]
 
@@ -93,11 +87,11 @@ push axisWithMoveAtOrigin =
                         contents = LinkedGrid.axisGet axis
                     in
                     -- found a(nother) push Cell, keep going
-                    if cellHas Push contents then
+                    if cellHas Types.Push contents then
                         followPushes axis |> Maybe.map doPush
 
                     -- found stop, so nothing moves
-                    else if cellHasAny [Pull, Stop] contents then
+                    else if cellHasAny [Types.Pull, Types.Stop] contents then
                         Nothing
 
                     else
@@ -115,7 +109,7 @@ pull axisWithMoveAtOrigin =
     let
         doPull : Axis -> Axis
         doPull axis =
-            moveOnAxisByVerb Pull axis
+            moveOnAxisByStative Types.Pull axis
                 |> LinkedGrid.axisForward 1
                 |> ensure axis [axis]
 
@@ -128,7 +122,7 @@ pull axisWithMoveAtOrigin =
                         contents = LinkedGrid.axisGet axis
                     in
                     -- found a(nother) pull Cell, keep going
-                    if cellHas Pull contents then
+                    if cellHas Types.Pull contents then
                         followPulls axis |> doPull
 
                     else
@@ -149,7 +143,7 @@ doMovesAndPushes initialGrid =
                 addIfMove : Location -> List ( Int, Int, List Object ) -> List ( Int, Int, List Object )
                 addIfMove loc acc =
                     let
-                        movingContent = List.filter (objectIs Move) (LinkedGrid.getContents loc)
+                        movingContent = List.filter (objectIs Types.Move) (LinkedGrid.getContents loc)
                         ( x, y ) = LinkedGrid.getLocationCoordinates loc
 
                     in

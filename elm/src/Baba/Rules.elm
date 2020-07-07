@@ -1,8 +1,16 @@
-module Baba.Rules exposing ( lookForRules )
+module Baba.Rules exposing ( lookForRules, ruleDebugString )
 
 import Baba.Cell exposing (..)
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
-import Baba.Types exposing (..)
+import Baba.Types as Types
+
+type Rule
+    = Is Types.Subject Types.Complement
+    | Has Types.Subject Types.Subject
+
+ruleDebugString rule = case rule of
+    Is c v -> String.join " " [Types.subjectDebugString c, "is", Types.complementDebugString v]
+    Has l r -> String.join " " [Types.subjectDebugString l, "has", Types.subjectDebugString r]
 
 tempGetFirst cell = case cell of
     first :: rest -> first
@@ -33,7 +41,7 @@ lookForRulesOnAxis axis =
         impl : Cell -> Cell -> Cell -> List Rule -> List Rule
         impl x y z a =
 
-            case ( asText x, asVerb x, asText z ) of
+            case ( asText x, asStative x, asText z ) of
                 ( Nothing, _, _ ) -> a
                 ( _, Just _, _ )  -> a
                 ( _, _, Nothing ) -> a
@@ -43,10 +51,24 @@ lookForRulesOnAxis axis =
                         firstY = getObjectWord (tempGetFirst y)
                         firstZ = getObjectWord (tempGetFirst z)
                     in
-                        case ( firstY, asVerb z ) of
-                            ( '=', Just zVerb ) -> Is      firstX (verbFromOccupant zVerb) :: a
-                            ( '=', Nothing )    -> Becomes firstX firstZ                   :: a
-                            ( '<', Nothing )    -> Has     firstX firstZ                   :: a
+                        case ( firstY, asStative z ) of
+                            ( '=', Just zStative ) ->
+                                Is
+                                    (Types.NounSubject (Types.Noun firstX))
+                                    (Types.Stative (stativeFromOccupant zStative))
+                                :: a
+
+                            ( '=', Nothing ) ->
+                                Is
+                                    (Types.NounSubject (Types.Noun firstX))
+                                    (Types.NounComplement (Types.Noun firstZ))
+                                :: a
+
+                            ( '<', Nothing ) ->
+                                Has
+                                    (Types.NounSubject (Types.Noun firstX))
+                                    (Types.NounSubject (Types.Noun firstZ))
+                                :: a
                             _ -> a
     in
         surrounding impl [] axis

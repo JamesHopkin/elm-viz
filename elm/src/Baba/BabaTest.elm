@@ -70,7 +70,7 @@ init msg =
 
 rulesTestResult =
         let
-            ruleStrings = List.map ruleDebugString (lookForRules rulesTestGrid)
+            ruleStrings = List.map Rules.ruleDebugString (lookForRules rulesTestGrid)
         in 
             String.join "\n" ruleStrings
 

@@ -1,13 +1,13 @@
 module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveToCell,
-                            objectIs, objectIsAny, cellHas, cellHasAny, asText, asVerb,
+                            objectIs, objectIsAny, cellHas, cellHasAny, asText, asStative,
                             getObjectId, getObjectWord, getObjectDirection, makeObject, makeDirectedObject,
                             setObjectDirection, setObjectIs, 
                             flipDir,
-                            cellDebugString, stringListToCells, verbFromOccupant )
+                            cellDebugString, stringListToCells, stativeFromOccupant )
 
 import List.Extra
 
-import Baba.Types exposing (..)
+import Baba.Types as Types
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
 
 type alias Cell = List Object
@@ -17,7 +17,22 @@ type alias Grid = LinkedGrid.LinkedGrid Cell
 type alias Axis = LinkedGrid.Axis Cell
 
 
-type Object = Object Int Char Direction Int
+type ObjectKind
+    = Instance Types.Noun
+    | Text Types.Text
+
+
+
+type alias ObjectState = 
+    { word: ObjectKind
+    , direction: Direction
+    , flags: Int
+    , lastMovedTick: Int
+    }
+
+
+
+type Object = Object Int ObjectState
 
 emptyCell : Cell
 emptyCell = []
@@ -36,29 +51,50 @@ makeObject id c =
             2 -> Down
             _ -> Left
     in
-    Object id c dir 0
+    Object id
+        { word = Instance (Types.Noun c)
+        , direction = dir
+        , flags = 0
+        , lastMovedTick = -1
+        }
 
 makeDirectedObject id c direction =
-    Object id c direction 0
+    Object id
+        { word = Instance (Types.Noun c)
+        , direction = direction
+        , flags = 0
+        , lastMovedTick = -1
+        }
+
 
 getObjectId object = case object of
-    Object id _ _ _ -> id
+    Object id _ -> id
 
 getObjectWord object = case object of
-    Object _ word _ _ -> word
+    Object _ state ->
+        case state.word of
+            Instance (Types.Noun c) -> c
+            _ -> '!' -- to do! (callers of getObjectWord need to use ObjectKind)
 
 getObjectDirection object = case object of
-    Object _ _ direction _ -> direction
+    Object _ state -> state.direction
 
 setObjectDirection direction object = case object of
-    Object id word _ flags -> Object id word direction flags
+    Object id state ->
+        Object id 
+            { state
+            | direction = direction
+            }
 
 getObjectFlags object = case object of
-    Object _ _ _ flags -> flags
+    Object id state -> state.flags
 
 setObjectIs verb object = case object of
-    Object id word direction _ ->
-        Object id word direction (flagFor verb)
+    Object id state ->
+        Object id 
+            { state
+            | flags = Types.flagFor verb
+            }
 
 addToCellAt offset object axis =
     let
@@ -113,35 +149,39 @@ moveToCell id from to maybeDirection axis =
     in
     result
 
-verbFromOccupant c = case c of
-    'P' -> Push
-    'M' -> Move
-    'D' -> Defeat
-    'W' -> Win
-    'O' -> Open
-    'C' -> Closed
-    'F' -> Float_
-    _ -> You
+stativeFromOccupant c = case c of
+    'P' -> Types.Push
+    'M' -> Types.Move
+    'D' -> Types.Defeat
+    'W' -> Types.Win
+    'O' -> Types.Open
+    'C' -> Types.Closed
+    'F' -> Types.Float_
+    _ -> Types.You
 
 
 flipDir : Object -> Object
 flipDir object = case object of
-    Object id word direction flags ->
-        Object id word (LinkedGrid.flipDir direction) flags
+    Object id state ->
+        Object id 
+            { state
+            | direction = LinkedGrid.flipDir state.direction
+            }
 
-objectIs : Verb -> Object -> Bool
-objectIs verb object = is verb (getObjectFlags object)
+objectIs : Types.Stative -> Object -> Bool
+objectIs stative object = Types.is stative (getObjectFlags object)
 
-objectIsAny : List Verb -> Object -> Bool
-objectIsAny verbs object = isAny verbs (getObjectFlags object)
+objectIsAny : List Types.Stative -> Object -> Bool
+objectIsAny statives object = Types.isAny statives (getObjectFlags object)
 
-cellHas : Verb -> Cell -> Bool
-cellHas verb cell = List.any (objectIs verb) cell
+cellHas : Types.Stative -> Cell -> Bool
+cellHas stative cell = List.any (objectIs stative) cell
 
-cellHasAny : List Verb -> Cell -> Bool
-cellHasAny verbs cell = List.any (objectIsAny verbs) cell
+cellHasAny : List Types.Stative -> Cell -> Bool
+cellHasAny statives cell = List.any (objectIsAny statives) cell
 
 
+-- wip
 asText : Cell -> Maybe Char
 asText cell =
     cell
@@ -149,8 +189,8 @@ asText cell =
         |> List.filter Char.isAlpha
         |> List.head
 
-asVerb : Cell -> Maybe Char
-asVerb cell =
+asStative : Cell -> Maybe Char
+asStative cell =
     cell
         |> List.map getObjectWord
         |> List.filter Char.isUpper
@@ -165,7 +205,7 @@ showDirections = True
 
 objectDebugChar : Object -> Char
 objectDebugChar object =
-    if objectIs Move object then
+    if objectIs Types.Move object then
         case getObjectDirection object of
             Up -> '↑'
             Right -> '→'
@@ -221,31 +261,31 @@ stringListToCells rows =
                 let newObject = case c of
                         '↑' ->
                             makeDirectedObject index 'm' Up
-                                |> setObjectIs Move
+                                |> setObjectIs Types.Move
 
                         '→' ->
                             makeDirectedObject index 'm' Right
-                                |> setObjectIs Move
+                                |> setObjectIs Types.Move
 
                         '↓' ->
                             makeDirectedObject index 'm' Down
-                                |> setObjectIs Move
+                                |> setObjectIs Types.Move
 
                         '←' ->
                             makeDirectedObject index 'm' Left
-                                |> setObjectIs Move
+                                |> setObjectIs Types.Move
 
                         'S' ->
                             makeObject index c
-                                |> setObjectIs Stop
+                                |> setObjectIs Types.Stop
 
                         'P' ->
                             makeObject index c
-                                |> setObjectIs Push
+                                |> setObjectIs Types.Push
 
                         'L' ->
                             makeObject index c
-                                |> setObjectIs Pull
+                                |> setObjectIs Types.Pull
 
                         _ ->
                             makeObject index c
