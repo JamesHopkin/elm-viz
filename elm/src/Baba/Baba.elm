@@ -1,8 +1,11 @@
-module Baba.Baba exposing ( wait, countChars )
+module Baba.Baba exposing ( Model, Msg, init, update, subscription,
+                            wait, countChars )
 
 import Bitwise
-import Dict exposing ( Dict )
 
+import Dict exposing ( Dict )
+import Json.Decode as Decode
+import Browser.Events
 import List.Extra
 
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
@@ -42,13 +45,11 @@ isJust maybe = case maybe of
 
 
 
--- single step of the grid
-wait : Cell.Grid -> Cell.Grid
-wait grid =
+applyRules : Cell.Grid -> Cell.Grid
+applyRules grid =
     let
         rules = Rules.lookForRules grid
 
--- apply rules!
         foldFunc : ( Int, Int, Cell.Object ) -> Cell.Grid -> Cell.Grid
         foldFunc ( x, y, object ) gridToUpdate =
             -- just doing statives
@@ -80,11 +81,15 @@ wait grid =
                                         |> Maybe.withDefault gridToUpdate 
                         _ -> gridToUpdate
 
-        withRulesApplied = Cell.foldObjects foldFunc grid grid
-
     in
-        Move.doMovesAndPushes withRulesApplied
+    Cell.foldObjects foldFunc grid grid
 
+-- single step of the grid
+wait : Cell.Grid -> Cell.Grid
+wait grid =
+    grid
+        |> applyRules
+        |> Move.doMovesAndPushes
 
 
 
@@ -107,7 +112,47 @@ countChars grid =
         |> Dict.toList
 
 
---   ←
---   ↑
---   →
---   ↓
+
+-- keyboard
+keyDecoder : (Msg -> msg) -> Decode.Decoder msg
+keyDecoder msg =
+    Decode.map (toDirectionMessage >> msg) (Decode.field "key" Decode.string)
+
+
+toDirectionMessage : String -> Msg
+toDirectionMessage string =
+    case String.uncons string of
+        Just ( 'w', "" ) -> OnKeyDown Up
+        Just ( 'd', "" ) -> OnKeyDown Right
+        Just ( 's', "" ) -> OnKeyDown Down
+        Just ( 'a', "" ) -> OnKeyDown Left
+
+        _ ->
+            Dummy
+
+type Msg
+    = OnKeyDown Direction
+    | Dummy
+
+type alias Model = Cell.Grid
+
+init : (Msg -> msg) -> ( Model, Cmd msg )
+init _ = ( LinkedGrid.fromLists Cell.emptyCell 7 7
+    (Cell.stringListToCells
+        [ ""
+        , "···P"
+        , "···↑"
+        , "xP→·←PS"
+        , "···↓"
+        , "···P"
+        ]
+    ), Cmd.none )
+
+update : Msg -> Model -> Model 
+update msg model =
+    case msg of
+        OnKeyDown direction -> model
+        _ -> model
+
+subscription : (Msg -> msg) -> Sub msg
+subscription msg = Browser.Events.onKeyDown (keyDecoder msg)

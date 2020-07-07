@@ -100,6 +100,7 @@ push axisWithMoveAtOrigin =
                 -- treat boundary as stop
                 _ -> Nothing
 
+-- should really be flipping only the object in question
         flipThenPush () = flipCellDirection axisWithMoveAtOrigin |> followPushes
     in
     followPushes axisWithMoveAtOrigin |> maybeOrElseLazy flipThenPush

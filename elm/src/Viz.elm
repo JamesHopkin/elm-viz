@@ -56,7 +56,8 @@ type alias Model =
   { selected: List String
   , graph: Graph.Graph
   , state: GraphState
-  , baba: Baba.BabaTest.Model
+  , baba: Baba.Baba.Model
+  , babaTest: Baba.BabaTest.Model
   }
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -69,9 +70,14 @@ update msg model =
         _ ->
           ( { model | state = Idle }, Cmd.none )
 
--- not forwarding commands yet
     BabaMsg babaMsg ->
-      ( { model | baba = Baba.BabaTest.update babaMsg model.baba }
+      ( { model | baba = Baba.Baba.update babaMsg model.baba }
+        , Cmd.none
+      )
+
+-- not forwarding commands yet
+    BabaTestMsg testMsg ->
+      ( { model | babaTest = Baba.BabaTest.update testMsg model.babaTest }
         , Cmd.none
       )
 
@@ -97,22 +103,26 @@ initialGraph = Graph.makeGraph
 init : Flags -> ( Model, Cmd Msg )
 init _ =
   let
-    ( babaModel, babaCmd ) = Baba.BabaTest.init BabaMsg
+    ( babaModel, babaCmd ) = Baba.Baba.init BabaMsg
+    ( babaTestModel, babaTestCmd ) = Baba.BabaTest.init BabaTestMsg
   in 
     ( { selected = []
       , graph = initialGraph
       , state = InFlight
       , baba = babaModel
+      , babaTest = babaTestModel
       }
     , Cmd.batch
         [ render initialGraph
         , babaCmd
+        , babaTestCmd
         ]
     )
 
 type Msg
   = GraphReceived
-  | BabaMsg Baba.BabaTest.Msg
+  | BabaMsg Baba.Baba.Msg
+  | BabaTestMsg Baba.BabaTest.Msg
 
 
 -- update Baba every half second
@@ -120,7 +130,8 @@ type Msg
 subscriptions _ =
   Sub.batch
     [ notifyGraphRendered (\_ -> GraphReceived)
-    , Baba.BabaTest.subscription BabaMsg
+    , Baba.Baba.subscription BabaMsg
+    , Baba.BabaTest.subscription BabaTestMsg
     ]
 
 
@@ -140,7 +151,7 @@ view model =
     , h3 [] [ text "Move tests" ]
     , table [ class "table" ]
       [ tr []
-        (model.baba
+        (model.babaTest
           |> List.map Baba.BabaTest.gridToStr
           |> List.map tdFromString
         )
