@@ -2,7 +2,8 @@ module Baba.LinkedGrid exposing ( LinkedGrid, toDebugString, Location, foldLocat
                                 make, Direction (..), flipDir, gridFromLocation,
                                 fromLists, at, getContents, setContents, above, right, below, left,
                                 Axis, makeAxis, gridFromAxis, axisOrigin, axisGetAt, axisGet, axisSetAt, axisSet,
-                                axisForward, flipAxis, getAxisDirection )
+                                axisForward, flipAxis, getAxisDirection,
+                                overlay )
 
 import Array exposing ( Array )
 
@@ -149,7 +150,7 @@ axisGetAt offset axis = case axis of
         let
             ( newX, newY ) = applyOffset ( x, y ) offset direction
         in
-            getContents (Location grid newX newY)
+        getContents (Location grid newX newY)
 axisGet = axisGetAt 0
 
 axisSetAt : Int -> el -> Axis el -> Axis el
@@ -160,7 +161,7 @@ axisSetAt offset content axis = case axis of
             newGrid = case setContents (Location grid newX newY) content of
                 Location g _ _ -> g
         in
-            makeAxis (Location newGrid x y) direction
+        makeAxis (Location newGrid x y) direction
 axisSet = axisSetAt 0
 
 axisForward : Int -> Axis el -> Maybe (Axis el)
@@ -170,7 +171,7 @@ axisForward offset axis = case axis of
             ( width, height ) = getDimensions grid 
             ( newX, newY ) = applyOffset ( x, y ) offset direction
         in
-            Maybe.map (\loc -> Axis loc direction) (at newX newY grid)
+        Maybe.map (\loc -> Axis loc direction) (at newX newY grid)
 
 axisOrigin axis = case axis of
     Axis location _ -> location
@@ -193,3 +194,31 @@ flipAxis axis = case axis of
 
 getAxisDirection axis = case axis of
     Axis _ direction -> direction
+
+-- inefficient!
+overlay : LinkedGrid el -> Int -> Int -> LinkedGrid el -> LinkedGrid el
+overlay targetGrid x y srcGrid = 
+    let
+        ( srcWidth, srcHeight ) = getDimensions srcGrid
+
+        foldFunc : Location el -> LinkedGrid el -> LinkedGrid el
+        foldFunc targetLoc grid =
+            let
+                ( tx, ty ) = getLocationCoordinates targetLoc
+            in
+            if tx >= x && tx < x + srcWidth && ty >= y && ty < y + srcHeight then
+                let
+                    contents = at (tx - x) (ty - y) srcGrid
+                        |> Maybe.map getContents
+                    target = at tx ty grid
+                in
+                    case ( target, contents ) of
+                        ( Just t, Just c ) ->
+                            setContents t c |> gridFromLocation
+
+                        _ ->
+                            grid
+            else
+                grid
+    in
+    foldLocations foldFunc targetGrid targetGrid

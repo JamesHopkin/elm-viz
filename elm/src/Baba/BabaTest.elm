@@ -6,7 +6,7 @@ import Baba.Baba as Baba exposing ( countChars )
 import Baba.Cell exposing (..)
 import Baba.Move exposing (..)
 import Baba.Rules as Rules exposing (..)
-import Baba.Types exposing (..)
+import Baba.Types as Types
 
 import Baba.LinkedGrid as LinkedGrid
 
@@ -14,14 +14,25 @@ import Random
 import Time
 
 
--- random from seed
-testGrid = 
-        LinkedGrid.fromLists emptyCell 4 4
+ruleGridToOverlay = LinkedGrid.fromLists emptyCell 5 5
           (stringListToCells
-            [ "→P"
-            , "m=M"
+            [ "A=M"
+            , " B=P"
+            , "  C"
+            , "  ="
+            , "  L"
             ]
           )
+
+
+-- random from seed
+testGrid = 
+        --LinkedGrid.fromLists emptyCell 4 4
+        --  (stringListToCells
+        --    [ "→P"
+        --    , "m=M"
+        --    ]
+        --  )
 
         --LinkedGrid.fromLists emptyCell 4 4
         --  [ [ []
@@ -29,10 +40,33 @@ testGrid =
         --    , [ ( 2, 'P') ]
         --    ]
         --  ]
+    Random.step generator seed
+        |> Tuple.first
+        |> makeRandomGrid
+        |> (\grid -> LinkedGrid.overlay grid 0 0 ruleGridToOverlay)
 
-        --Random.step generator seed
-        --    |> Tuple.first
-        --    |> makeRandomGrid
+    --    withMove = random
+    --        |> LinkedGrid.at 3 3
+    --        |> Maybe.map (\loc -> LinkedGrid.setContents loc [
+    --            makeTextObject 10000 (Types.NounText (Types.Noun 'm'))
+    --                |> setObjectIs Types.Push
+    --            ])
+    --        |> Maybe.map LinkedGrid.gridFromLocation
+    --        |> Maybe.andThen (LinkedGrid.at 4 3)
+    --        |> Maybe.map (\loc -> LinkedGrid.setContents loc [
+    --            makeTextObject 10001 (Types.LinkingWord Types.Is)
+    --                |> setObjectIs Types.Push
+    --            ])
+    --        |> Maybe.map LinkedGrid.gridFromLocation
+    --        |> Maybe.andThen (LinkedGrid.at 5 3)
+    --        |> Maybe.map (\loc -> LinkedGrid.setContents loc [
+    --            makeTextObject 10002 (Types.StativeText Types.Move)
+    --                |> setObjectIs Types.Push
+    --            ])
+    --        |> Maybe.map LinkedGrid.gridFromLocation
+
+    --in
+    --Maybe.withDefault random withMove
 
 problemGraphEvo =
     [ testGrid
@@ -137,7 +171,7 @@ type Msg
 
 seed = Random.initialSeed 1
 generator = 
-    Random.list (randomGridSize * randomGridSize) <| Random.uniform '·' (String.toList "························←↑→↓PPPPSSL")
+    Random.list (randomGridSize * randomGridSize) <| Random.uniform ' ' (String.toList "                    aaaabbbbccd")
 
 
 update : Msg -> Model -> Model 
@@ -152,11 +186,13 @@ update msg model =
                 List.map Baba.wait model
 
         RandomGrid chars ->
-                (makeRandomGrid chars) :: model
+                (makeRandomGrid chars
+                    |> (\grid -> LinkedGrid.overlay grid 0 0 ruleGridToOverlay)
+                    ) :: model
 
 subscription : (Msg -> msg) -> Sub msg
 subscription msg = Time.every 300 (Update >> msg)
 
-randomGridSize = 8
+randomGridSize = 12
 
 

@@ -1,7 +1,8 @@
 module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveToCell,
                             objectIs, objectIsAny, cellHas, cellHasAny,
                             firstComplement, firstSubject, firstStative, firstLinkingWord,
-                            getObjectId, getObjectWord, getObjectDirection, getObjectFlags, makeObject, makeDirectedObject,
+                            getObjectId, getObjectWord, getObjectDirection, getObjectFlags,
+                            makeObject, makeDirectedObject, makeTextObject,
                             setObjectDirection, setObjectFlags, setObjectIs, updateObjectInCell,
                             flipDir, foldObjects,
                             objectDebugChar, cellDebugString, stringListToCells, stativeFromOccupant,
@@ -287,6 +288,14 @@ objectDebugChar object =
     case getObjectWord object of 
         Instance (Types.Noun c) -> c
         Text (Types.NounText (Types.Noun c)) -> Char.toUpper c
+        Text (Types.StativeText stative) -> 
+            case stative of
+                Types.Move -> 'M'
+                Types.Push -> 'P'
+                Types.Pull -> 'L'
+                Types.You -> 'Y'
+                _ -> '£'
+
         Text (Types.LinkingWord Types.Is) -> '='
         Text (Types.LinkingWord Types.Has) -> '<'
         _ -> '@'
@@ -330,46 +339,30 @@ stringListToCells rows =
     let
         makeCell : Char -> ( Int, List Cell ) -> ( Int, List Cell )
         makeCell c ( index, outRow ) =
-            if c == '·' then
+            if c == ' ' then
                 ( index, [] :: outRow )
 
             else
                 let newObject = case c of
                         '<' ->
                             makeTextObject index (Types.LinkingWord <| Types.Has)
-                                |> setObjectIs Types.Stop
+                                |> setObjectIs Types.Push
 
                         '=' ->
                             makeTextObject index (Types.LinkingWord <| Types.Is)
-                                |> setObjectIs Types.Stop
-
-                        '↑' ->
-                            makeDirectedObject index 'm' Up
-                                |> setObjectIs Types.Move
-
-                        '→' ->
-                            makeDirectedObject index 'm' Right
-                                |> setObjectIs Types.Move
-
-                        '↓' ->
-                            makeDirectedObject index 'm' Down
-                                |> setObjectIs Types.Move
-
-                        '←' ->
-                            makeDirectedObject index 'm' Left
-                                |> setObjectIs Types.Move
-
-                        'S' ->
-                            makeObject index c
-                                |> setObjectIs Types.Stop
-
-                        'P' ->
-                            makeObject index c
                                 |> setObjectIs Types.Push
 
-                        'L' ->
-                            makeObject index c
-                                |> setObjectIs Types.Pull
+                        '↑' ->
+                            makeDirectedObject index 'a' Up
+
+                        '→' ->
+                            makeDirectedObject index 'a' Right
+
+                        '↓' ->
+                            makeDirectedObject index 'a' Down
+
+                        '←' ->
+                            makeDirectedObject index 'a' Left
 
                         _ ->
                             if Char.isUpper c then
@@ -380,6 +373,12 @@ stringListToCells rows =
 
                                             'M' ->
                                                 Types.StativeText Types.Move
+
+                                            'L' ->
+                                                Types.StativeText Types.Pull
+
+                                            'Y' ->
+                                                Types.StativeText Types.You
 
                                             _ ->
                                                 Types.NounText (Types.Noun (Char.toLower c))
