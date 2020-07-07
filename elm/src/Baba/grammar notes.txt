@@ -1,0 +1,38 @@
+
+Calling L "Subject", R "Complement"
+
+			L		R
+
+Noun		x		x		(keke, wall)
+Predicate	x		x		(all, empty)
+Stative				x		(move, hot)
+
+Complicates things having predicate separate
+But important - they're not parameterised like nouns
+
+
+Chain:
+
+	text
+	 |			-conjunction
+	 v
+	complement
+	 |			-stative
+	 v
+	subject
+	 |			-predicate
+	 v
+	noun
+
+stack of 4 seems deep
+	- 4-deep case to get noun from text?
+	- results in nested JS objects?
+
+Some way to implement tags?
+
+Conjunctions = And | Not
+Statives = Move | Hot
+etc
+
+Text = Conjunction Conjunctions
+	| StativeText Statives

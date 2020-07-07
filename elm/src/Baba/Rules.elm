@@ -1,4 +1,4 @@
-module Baba.Rules exposing ( lookForRules, ruleDebugString )
+module Baba.Rules exposing ( lookForRules, ruleDebugString, Rule(..) )
 
 import Baba.Cell exposing (..)
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
@@ -11,10 +11,6 @@ type Rule
 ruleDebugString rule = case rule of
     Is c v -> String.join " " [Types.subjectDebugString c, "is", Types.complementDebugString v]
     Has l r -> String.join " " [Types.subjectDebugString l, "has", Types.subjectDebugString r]
-
-tempGetFirst cell = case cell of
-    first :: rest -> first
-    _ -> makeObject -1 '$' -- need to fix if these start coming out
 
 surrounding : 
     (el -> el -> el -> acc -> acc)
@@ -40,36 +36,25 @@ lookForRulesOnAxis axis =
     let
         impl : Cell -> Cell -> Cell -> List Rule -> List Rule
         impl x y z a =
-
-            case ( asText x, asStative x, asText z ) of
-                ( Nothing, _, _ ) -> a
-                ( _, Just _, _ )  -> a
-                ( _, _, Nothing ) -> a
-                _ ->
+            case ( firstSubject x, firstLinkingWord y ) of
+                ( Just lhs, Just link ) ->
                     let
-                        firstX = getObjectWord (tempGetFirst x)
-                        firstY = getObjectWord (tempGetFirst y)
-                        firstZ = getObjectWord (tempGetFirst z)
+                        complementCases complement =
+                            case link of
+                                Types.Is ->
+                                    Just (Is lhs complement)
+
+                                Types.Has ->
+                                    Maybe.map (\rhs -> Has lhs rhs) (Types.complementAsSubject complement)
+
+                                _ -> Nothing
                     in
-                        case ( firstY, asStative z ) of
-                            ( '=', Just zStative ) ->
-                                Is
-                                    (Types.NounSubject (Types.Noun firstX))
-                                    (Types.Stative (stativeFromOccupant zStative))
-                                :: a
+                    case Maybe.andThen complementCases (firstComplement z) of
+                        Just rule -> rule :: a
+                        _ -> a
 
-                            ( '=', Nothing ) ->
-                                Is
-                                    (Types.NounSubject (Types.Noun firstX))
-                                    (Types.NounComplement (Types.Noun firstZ))
-                                :: a
+                _ -> a
 
-                            ( '<', Nothing ) ->
-                                Has
-                                    (Types.NounSubject (Types.Noun firstX))
-                                    (Types.NounSubject (Types.Noun firstZ))
-                                :: a
-                            _ -> a
     in
         surrounding impl [] axis
 

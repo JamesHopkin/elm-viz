@@ -1,32 +1,16 @@
-module Baba.Baba exposing ( countChars )
+module Baba.Baba exposing ( wait, countChars )
 
+import Bitwise
 import Dict exposing ( Dict )
 
 import List.Extra
 
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
-import Baba.Cell exposing (..)
+import Baba.Cell as Cell
+import Baba.Move as Move
+import Baba.Rules as Rules
+import Baba.Types as Types
 
-
-
-
-
-
-
-testRows =
-    [ ""
-    , "·a=P·"
-    , "b=c"
-    , "··<"
-    , "··d→"
-    ]
-
-
---rulesTestResult =
---    let
---      ruleStrings = List.map ruleDebugString (lookForRules testGrid)
---    in 
---      String.join "\n" ruleStrings
 
 
 
@@ -58,19 +42,64 @@ isJust maybe = case maybe of
 
 
 
+-- single step of the grid
+wait : Cell.Grid -> Cell.Grid
+wait grid =
+    let
+        rules = Rules.lookForRules grid
+
+-- apply rules!
+        foldFunc : ( Int, Int, Cell.Object ) -> Cell.Grid -> Cell.Grid
+        foldFunc ( x, y, object ) gridToUpdate =
+            -- just doing statives
+                    case Cell.getObjectWord object of 
+                        Cell.Instance (Types.Noun objectChar) ->
+                            let
+                                ruleFoldFunc : Rules.Rule -> Int -> Int
+                                ruleFoldFunc rule flags =
+                                    case rule of
+                                        Rules.Is (Types.NounSubject (Types.Noun c)) (Types.Stative stative) ->
+                                            if c == objectChar then
+                                                Bitwise.or flags (Types.flagFor stative)
+                                            else
+                                                flags
+                                        _ -> flags
+
+                                calculatedFlags = List.foldr ruleFoldFunc 0 rules 
+
+                            in
+                                if calculatedFlags == Cell.getObjectFlags object then
+                                    gridToUpdate
+                                else
+                                    let
+                                        updatedObject = Cell.setObjectFlags calculatedFlags object
+                                    in
+                                    LinkedGrid.at x y gridToUpdate
+                                        |> Maybe.map (Cell.updateObjectInCell updatedObject)
+                                        |> Maybe.map LinkedGrid.gridFromLocation
+                                        |> Maybe.withDefault gridToUpdate 
+                        _ -> gridToUpdate
+
+        withRulesApplied = Cell.foldObjects foldFunc grid grid
+
+    in
+        Move.doMovesAndPushes withRulesApplied
+
+
+
 
 
 countChars grid = 
     let
-        addContentsToDict : Object -> Dict Char Int -> Dict Char Int
+        addContentsToDict : Cell.Object -> Dict Char Int -> Dict Char Int
         addContentsToDict obj dict =
             let
-                key = getObjectWord obj
+                key = Cell.objectDebugChar obj
                 count = Maybe.withDefault 0 (Dict.get key dict)
             in
             Dict.insert key (count + 1) dict
 
-        addLocationsToDict : Location -> Dict Char Int -> Dict Char Int
+        addLocationsToDict : Cell.Location -> Dict Char Int -> Dict Char Int
         addLocationsToDict loc counts =
             List.foldr addContentsToDict counts (LinkedGrid.getContents loc)
     in

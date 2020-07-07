@@ -2,7 +2,7 @@ module Baba.BabaTest exposing ( Model, Msg, init, update, subscription,
                                 problemGraphEvo, gridToStr,
                                 rulesTestGridDebugStr, rulesTestResult )
 
-import Baba.Baba exposing ( countChars )
+import Baba.Baba as Baba exposing ( countChars )
 import Baba.Cell exposing (..)
 import Baba.Move exposing (..)
 import Baba.Rules as Rules exposing (..)
@@ -16,10 +16,12 @@ import Time
 
 -- random from seed
 testGrid = 
-        --LinkedGrid.fromLists emptyCell 4 4
-        --  (stringListToCells
-        --    [ "→P" ]
-        --  )
+        LinkedGrid.fromLists emptyCell 4 4
+          (stringListToCells
+            [ "→P"
+            , "m=M"
+            ]
+          )
 
         --LinkedGrid.fromLists emptyCell 4 4
         --  [ [ []
@@ -28,9 +30,9 @@ testGrid =
         --    ]
         --  ]
 
-        Random.step generator seed
-            |> Tuple.first
-            |> makeRandomGrid
+        --Random.step generator seed
+        --    |> Tuple.first
+        --    |> makeRandomGrid
 
 problemGraphEvo =
     [ testGrid
@@ -105,11 +107,15 @@ gridToStr = LinkedGrid.toDebugString cellDebugString
 
 testRows =
     [ ""
-    , "·a=P·"
-    , "b=c"
+    , "·A=X·"
+    , "B=C"
     , "··<"
-    , "··d→"
+    , "··D→"
     ]
+
+
+-- initial test
+--   X = push
 
 
 rulesTestGridDebugStr = gridToStr rulesTestGrid
@@ -143,7 +149,7 @@ update msg model =
                         Just grid -> countChars grid
                         _ -> []
                 in
-                List.map doMovesAndPushes model
+                List.map Baba.wait model
 
         RandomGrid chars ->
                 (makeRandomGrid chars) :: model
@@ -151,6 +157,6 @@ update msg model =
 subscription : (Msg -> msg) -> Sub msg
 subscription msg = Time.every 300 (Update >> msg)
 
-randomGridSize = 20
+randomGridSize = 8
 
 

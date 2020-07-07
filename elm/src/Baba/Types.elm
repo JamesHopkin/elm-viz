@@ -4,6 +4,11 @@ import Bitwise
 
 type Noun = Noun Char
 
+-- use all lower case chars internally, but show (and parse) nouns as upper case
+-- (instances lower case)
+nounDebugString noun = case noun of
+    Noun c -> String.fromChar (Char.toUpper c)
+
 type Conjunction
     = And
     | Not
@@ -16,6 +21,13 @@ type LinkingWord
     = Is
     | Has
     | Makes
+    | Near
+
+linkingWordDebugString linkingWord = case linkingWord of
+    Is  -> "is"
+    Has -> "has"
+    Makes -> "makes"
+    Near -> "near"
 
 -- predicate not really the right word, but these are things that can go
 -- on either side of Is
@@ -47,6 +59,19 @@ type Stative
     | Sink
     | Weak
 
+stativeDebugString stative = case stative of
+    Push -> "push"
+    Pull -> "pull"
+    Move -> "move"
+    More -> "more"
+    Stop -> "stop"
+    Defeat -> "defeat"
+    Win -> "win"
+    Open -> "open"
+    Closed -> "closed"
+    Float_ -> "float"
+    _ -> "you"
+
 type Subject
     = Predicate Predicate
     | NounSubject Noun
@@ -65,35 +90,39 @@ complementDebugString complement = case complement of
     PredicateComplement predicate -> predicateDebugString predicate
     NounComplement noun -> nounDebugString noun
 
+complementAsSubject complement = case complement of
+    PredicateComplement predicate -> Just (Predicate predicate)
+    NounComplement noun -> Just (NounSubject noun)
+    _ -> Nothing
+
 type Text
     = Conjunction Conjunction
-    | StativeText Stative
+    | LinkingWord LinkingWord
     | PredicateText Predicate
+    | StativeText Stative
     | NounText Noun
-
--- use all lower case chars internally, but show (and parse) nouns as upper case
--- (instances lower case)
-nounDebugString noun = case noun of
-    Noun c -> String.fromChar (Char.toUpper c)
-
-stativeDebugString stative = case stative of
-    Push -> "push"
-    Pull -> "pull"
-    Move -> "move"
-    More -> "more"
-    Stop -> "stop"
-    Defeat -> "defeat"
-    Win -> "win"
-    Open -> "open"
-    Closed -> "closed"
-    Float_ -> "float"
-    _ -> "you"
 
 textDebugString text = case text of
     Conjunction conjunction -> conjunctionDebugString conjunction
+    LinkingWord linkingWord -> linkingWordDebugString linkingWord
     StativeText stative -> stativeDebugString stative
     PredicateText predicate -> predicateDebugString predicate
     NounText noun -> nounDebugString noun
+
+textAsLinkingWord text = case text of
+    LinkingWord word -> Just word
+    _ -> Nothing
+
+textAsSubject text = case text of
+    PredicateText predicate -> Just (Predicate predicate)
+    NounText noun -> Just (NounSubject noun)
+    _ -> Nothing
+
+textAsComplement text = case text of
+    StativeText stative -> Just (Stative stative)
+    PredicateText predicate -> Just (PredicateComplement predicate)
+    NounText noun -> Just (NounComplement noun)
+    _ -> Nothing
 
 --------------
 -- Stative flags

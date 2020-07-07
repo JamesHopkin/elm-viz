@@ -1,5 +1,5 @@
 module Baba.LinkedGrid exposing ( LinkedGrid, toDebugString, Location, foldLocations, getLocationCoordinates,
-                                make, Direction (..), flipDir,
+                                make, Direction (..), flipDir, gridFromLocation,
                                 fromLists, at, getContents, setContents, above, right, below, left,
                                 Axis, makeAxis, gridFromAxis, axisOrigin, axisGetAt, axisGet, axisSetAt, axisSet,
                                 axisForward, flipAxis, getAxisDirection )
@@ -177,6 +177,9 @@ axisOrigin axis = case axis of
 
 gridFromAxis axis = case axis of
     Axis (Location grid _ _) _ -> grid
+
+gridFromLocation location = case location of
+    Location g _ _ -> g
 
 flipDir dir = case dir of
     Up -> Down

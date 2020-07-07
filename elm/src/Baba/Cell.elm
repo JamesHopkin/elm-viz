@@ -1,9 +1,12 @@
 module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveToCell,
-                            objectIs, objectIsAny, cellHas, cellHasAny, asText, asStative,
-                            getObjectId, getObjectWord, getObjectDirection, makeObject, makeDirectedObject,
-                            setObjectDirection, setObjectIs, 
-                            flipDir,
-                            cellDebugString, stringListToCells, stativeFromOccupant )
+                            objectIs, objectIsAny, cellHas, cellHasAny,
+                            firstComplement, firstSubject, firstStative, firstLinkingWord,
+                            getObjectId, getObjectWord, getObjectDirection, getObjectFlags, makeObject, makeDirectedObject,
+                            setObjectDirection, setObjectFlags, setObjectIs, updateObjectInCell,
+                            flipDir, foldObjects,
+                            objectDebugChar, cellDebugString, stringListToCells, stativeFromOccupant,
+
+                            ObjectKind(..) ) -- may encapsulate further
 
 import List.Extra
 
@@ -20,7 +23,6 @@ type alias Axis = LinkedGrid.Axis Cell
 type ObjectKind
     = Instance Types.Noun
     | Text Types.Text
-
 
 
 type alias ObjectState = 
@@ -66,15 +68,26 @@ makeDirectedObject id c direction =
         , lastMovedTick = -1
         }
 
+makeTextObject id text =
+    let
+        dir = case remainderBy 4 id of
+            0 -> Up
+            1 -> Right
+            2 -> Down
+            _ -> Left
+    in
+    Object id
+        { word = Text text
+        , direction = dir
+        , flags = 0
+        , lastMovedTick = -1
+        }
 
 getObjectId object = case object of
     Object id _ -> id
 
 getObjectWord object = case object of
-    Object _ state ->
-        case state.word of
-            Instance (Types.Noun c) -> c
-            _ -> '!' -- to do! (callers of getObjectWord need to use ObjectKind)
+    Object _ state -> state.word
 
 getObjectDirection object = case object of
     Object _ state -> state.direction
@@ -88,6 +101,13 @@ setObjectDirection direction object = case object of
 
 getObjectFlags object = case object of
     Object id state -> state.flags
+
+setObjectFlags flags object = case object of
+    Object id state ->
+        Object id 
+            { state
+            | flags = flags
+            }
 
 setObjectIs verb object = case object of
     Object id state ->
@@ -107,13 +127,26 @@ isJust m = case m of
     Just _ -> True
     _ -> False
 
+updateObjectInCell : Object -> Location -> Location
+updateObjectInCell updatedObject loc =
+    let
+        id = getObjectId updatedObject
+        replace l =
+            updatedObject :: (List.filter (getObjectId >> (/=) id) l)
+
+    in
+        LinkedGrid.getContents loc
+            |> replace
+            |> LinkedGrid.setContents loc
+
+
 moveToCell : Int -> Int -> Int -> Maybe Direction -> Axis -> Maybe Axis
 moveToCell id from to maybeDirection axis =
     let
         fromContent = LinkedGrid.axisGetAt from axis
 
         --dummy0 = Debug.log "move from content" fromContent
-        maybeObj = List.Extra.find (getObjectId >> ((==) id)) fromContent
+        maybeObj = List.Extra.find (getObjectId >> (==) id) fromContent
         --dummy = Debug.log "move ids" [id, from, to, if isJust maybeObj then 1 else 0]
 
     
@@ -130,8 +163,8 @@ moveToCell id from to maybeDirection axis =
                         Just
                             ( axis
     -- could optimise to not replace grid twice
-                                    |> LinkedGrid.axisSetAt from newFromContent
-                                    |> LinkedGrid.axisSetAt to newToContent
+                                |> LinkedGrid.axisSetAt from newFromContent
+                                |> LinkedGrid.axisSetAt to newToContent
                             )
 
                 _ -> Nothing
@@ -159,6 +192,17 @@ stativeFromOccupant c = case c of
     'F' -> Types.Float_
     _ -> Types.You
 
+foldObjects : (( Int, Int, Object ) -> a -> a) -> a -> Grid -> a
+foldObjects f acc grid =
+    let
+        foldFunc : Location -> a -> a
+        foldFunc location innerAcc =
+            let
+                ( x, y ) = LinkedGrid.getLocationCoordinates location
+            in
+            List.foldr (\obj -> f ( x, y, obj )) innerAcc (LinkedGrid.getContents location)
+    in
+    LinkedGrid.foldLocations foldFunc acc grid
 
 flipDir : Object -> Object
 flipDir object = case object of
@@ -180,20 +224,55 @@ cellHas stative cell = List.any (objectIs stative) cell
 cellHasAny : List Types.Stative -> Cell -> Bool
 cellHasAny statives cell = List.any (objectIsAny statives) cell
 
-
--- wip
-asText : Cell -> Maybe Char
-asText cell =
+firstLinkingWord : Cell -> Maybe Types.LinkingWord
+firstLinkingWord cell =
+    let
+        asLinkingWord : Object -> Maybe Types.LinkingWord
+        asLinkingWord obj = case getObjectWord obj of
+            Text text -> Types.textAsLinkingWord text
+            _ -> Nothing
+    in
     cell
-        |> List.map getObjectWord
-        |> List.filter Char.isAlpha
+        |> List.filterMap asLinkingWord
         |> List.head
 
-asStative : Cell -> Maybe Char
-asStative cell =
+firstComplement : Cell -> Maybe Types.Complement
+firstComplement cell =
+    let
+        asComplement : Object -> Maybe Types.Complement
+        asComplement obj = case getObjectWord obj of
+            Text text -> Types.textAsComplement text
+            _ -> Nothing
+    in
     cell
-        |> List.map getObjectWord
-        |> List.filter Char.isUpper
+        |> List.filterMap asComplement
+        |> List.head
+
+firstSubject : Cell -> Maybe Types.Subject
+firstSubject cell =
+    let
+        asSubject : Object -> Maybe Types.Subject
+        asSubject obj = case getObjectWord obj of
+            Text text -> Types.textAsSubject text
+            _ -> Nothing
+    in
+    cell
+        |> List.filterMap asSubject
+        |> List.head
+
+firstStative : Cell -> Maybe Types.Stative
+firstStative cell =
+    let
+        asStative : Object -> Maybe Types.Stative
+        asStative obj = case getObjectWord obj of
+            Text text -> 
+                case text of
+                    Types.StativeText stative -> Just stative
+                    _ -> Nothing
+            _ -> Nothing
+    in
+    cell
+        |> List.filterMap asStative
         |> List.head
 
 
@@ -205,15 +284,12 @@ showDirections = True
 
 objectDebugChar : Object -> Char
 objectDebugChar object =
-    if objectIs Types.Move object then
-        case getObjectDirection object of
-            Up -> '↑'
-            Right -> '→'
-            Down -> '↓'
-            Left -> '←'
-
-    else
-        getObjectWord object
+    case getObjectWord object of 
+        Instance (Types.Noun c) -> c
+        Text (Types.NounText (Types.Noun c)) -> Char.toUpper c
+        Text (Types.LinkingWord Types.Is) -> '='
+        Text (Types.LinkingWord Types.Has) -> '<'
+        _ -> '@'
 
 
 cellDebugString : Cell -> String
@@ -223,7 +299,7 @@ cellDebugString cell =
          |> String.join ""
     else if showDirections then 
         Maybe.withDefault "· " (Maybe.map
-            (\obj -> String.fromChar (getObjectWord obj) ++ (case getObjectDirection obj of
+            (\obj -> String.fromChar (objectDebugChar obj) ++ (case getObjectDirection obj of
                 Up -> "↑"
                 Right -> "→"
                 Down -> "↓"
@@ -259,6 +335,14 @@ stringListToCells rows =
 
             else
                 let newObject = case c of
+                        '<' ->
+                            makeTextObject index (Types.LinkingWord <| Types.Has)
+                                |> setObjectIs Types.Stop
+
+                        '=' ->
+                            makeTextObject index (Types.LinkingWord <| Types.Is)
+                                |> setObjectIs Types.Stop
+
                         '↑' ->
                             makeDirectedObject index 'm' Up
                                 |> setObjectIs Types.Move
@@ -288,7 +372,21 @@ stringListToCells rows =
                                 |> setObjectIs Types.Pull
 
                         _ ->
-                            makeObject index c
+                            if Char.isUpper c then
+                                let
+                                    text = case c of 
+                                            'P' ->
+                                                Types.StativeText Types.Push
+
+                                            'M' ->
+                                                Types.StativeText Types.Move
+
+                                            _ ->
+                                                Types.NounText (Types.Noun (Char.toLower c))
+                                in
+                                setObjectIs Types.Push (makeTextObject index text)
+                            else
+                                makeObject index c
                 in
                 ( index + 1, [newObject] :: outRow )
 
