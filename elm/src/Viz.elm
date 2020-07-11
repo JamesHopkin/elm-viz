@@ -140,14 +140,25 @@ tdFromString str = td [] [ pre [] [ text str ] ]
 view : Model -> Html.Html Msg
 view model =
   div []
-    [ h3 [] [ text "What's up with this?" ]
+    [ h3 [] [ text "Baba!" ]
     , table [ class "table" ]
-      [ tr []
-        (Baba.BabaTest.problemGraphEvo
-          |> List.map Baba.BabaTest.gridToStr
-          |> List.map tdFromString
+      [ tr [] 
+         ( case List.head model.baba of
+            Just grid ->
+              [tdFromString (Baba.BabaTest.gridToStr grid)]
+
+            Nothing ->
+              []
         )
       ]
+    --, h3 [] [ text "What's up with this?" ]
+    --, table [ class "table" ]
+    --  [ tr []
+    --    (Baba.BabaTest.problemGraphEvo
+    --      |> List.map Baba.BabaTest.gridToStr
+    --      |> List.map tdFromString
+    --    )
+    --  ]
     , h3 [] [ text "Move tests" ]
     , table [ class "table" ]
       [ tr []

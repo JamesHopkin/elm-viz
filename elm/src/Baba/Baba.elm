@@ -87,9 +87,20 @@ applyRules grid =
 -- single step of the grid
 wait : Cell.Grid -> Cell.Grid
 wait grid =
+    let
+        shouldMove obj =
+            if Cell.objectIs Types.Move obj then
+                Just (Cell.getObjectDirection obj)
+
+            else
+                Nothing
+    in
     grid
         |> applyRules
-        |> Move.doMovesAndPushes
+        |> Move.doMovesAndPushes shouldMove True
+        |> Tuple.second
+
+
 
 
 
@@ -116,42 +127,76 @@ countChars grid =
 -- keyboard
 keyDecoder : (Msg -> msg) -> Decode.Decoder msg
 keyDecoder msg =
-    Decode.map (toDirectionMessage >> msg) (Decode.field "key" Decode.string)
+    Decode.map (interpretKey >> msg) (Decode.field "key" Decode.string)
 
 
-toDirectionMessage : String -> Msg
-toDirectionMessage string =
+interpretKey : String -> Msg
+interpretKey string =
     case String.uncons string of
-        Just ( 'w', "" ) -> OnKeyDown Up
-        Just ( 'd', "" ) -> OnKeyDown Right
-        Just ( 's', "" ) -> OnKeyDown Down
-        Just ( 'a', "" ) -> OnKeyDown Left
+        Just ( 'w', "" ) -> MoveYou Up
+        Just ( 'd', "" ) -> MoveYou Right
+        Just ( 's', "" ) -> MoveYou Down
+        Just ( 'a', "" ) -> MoveYou Left
+        Just ( 'u', "" ) -> Undo
 
         _ ->
             Dummy
 
 type Msg
-    = OnKeyDown Direction
+    = MoveYou Direction
+    | Undo
     | Dummy
 
-type alias Model = Cell.Grid
+type alias Model = List Cell.Grid
 
 init : (Msg -> msg) -> ( Model, Cmd msg )
-init _ = ( LinkedGrid.fromLists Cell.emptyCell 7 7
+init _ = ([ LinkedGrid.fromLists Cell.emptyCell 7 7
     (Cell.stringListToCells
         [ ""
-        , "···P"
-        , "···↑"
-        , "xP→·←PS"
-        , "···↓"
-        , "···P"
+        , " a"
+        , ""
+        , " A=Y"
+        , ""
+        , "  aP"
         ]
-    ), Cmd.none )
+    )], Cmd.none )
 
 update : Msg -> Model -> Model 
 update msg model =
     case msg of
-        OnKeyDown direction -> model
+        MoveYou direction ->
+            let
+                youMoveFunc obj = 
+                    if Cell.objectIs Types.You obj then
+                        Just direction 
+                    else
+                        Nothing
+
+                doMove grid =
+                    grid
+                        |> applyRules
+                        |> Move.doMovesAndPushes youMoveFunc False
+            in
+            case List.head model of
+                Just grid ->
+                    let
+                        ( numMoved, newGrid ) = doMove grid
+                    in
+                    if numMoved > 0 then
+                        newGrid :: model
+                    else
+                        model
+
+                _ -> model
+
+        Undo ->
+            case model of
+                _ :: _ :: _ ->
+                    List.drop 1 model
+
+                _ ->
+                    model
+
         _ -> model
 
 subscription : (Msg -> msg) -> Sub msg

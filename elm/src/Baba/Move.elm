@@ -100,10 +100,9 @@ push axisWithMoveAtOrigin =
                 -- treat boundary as stop
                 _ -> Nothing
 
--- should really be flipping only the object in question
-        flipThenPush () = flipCellDirection axisWithMoveAtOrigin |> followPushes
     in
-    followPushes axisWithMoveAtOrigin |> maybeOrElseLazy flipThenPush
+    followPushes axisWithMoveAtOrigin
+
 
 pull : Axis -> Axis
 pull axisWithMoveAtOrigin =
@@ -134,43 +133,70 @@ pull axisWithMoveAtOrigin =
     in
     followPulls axisWithMoveAtOrigin
 
-doMovesAndPushes : Grid -> Grid
-doMovesAndPushes initialGrid =
+type alias MoveEntry =
+    { x : Int
+    , y : Int
+    , objects : List ( Object, Direction )
+    }
+
+doMovesAndPushes : (Object -> Maybe Direction) -> Bool -> Grid -> ( Int, Grid )
+doMovesAndPushes shouldMove bounce initialGrid =
     let
         -- find moves
-        moveCoords : List ( Int, Int, List Object )
+        moveCoords : List MoveEntry
         moveCoords =
             let
-                addIfMove : Location -> List ( Int, Int, List Object ) -> List ( Int, Int, List Object )
+                addIfMove : Location -> List MoveEntry -> List MoveEntry
                 addIfMove loc acc =
                     let
-                        movingContent = List.filter (objectIs Types.Move) (LinkedGrid.getContents loc)
-                        ( x, y ) = LinkedGrid.getLocationCoordinates loc
+                        shouldMoveWrapper obj =
+                            Maybe.map (\dir -> ( obj, dir )) (shouldMove obj)
 
+                        movingContent = 
+                            LinkedGrid.getContents loc
+                                |> List.filterMap shouldMoveWrapper
+
+                        ( x, y ) = LinkedGrid.getLocationCoordinates loc
                     in
                     case movingContent of 
-                        [] -> acc
-                        _ -> ( x, y, movingContent ) :: acc
+                        [] ->
+                            acc
+
+                        _ ->
+                            { x = x, y = y
+                            , objects = movingContent
+                            }
+                            :: acc
 
             in
             LinkedGrid.foldLocations addIfMove [] initialGrid
 
-        impl : ( Int, Int, List Object ) -> Grid -> Grid
-        impl ( x, y, movingObjects ) grid =
+        impl : MoveEntry -> Grid -> Grid
+        impl entry grid =
             let
 
                 -- list of objects, grid is accumulator (will need additional state to record what got stuck)
-                moveFoldFunc : Object -> Grid -> Grid
-                moveFoldFunc object innerGrid =
+                moveFoldFunc : ( Object, Direction ) -> Grid -> Grid
+                moveFoldFunc ( object, direction ) innerGrid =
                     let
-                        -- get location and direction, will never use Nothing case
-                        direction = getObjectDirection object
-                        maybeUpdatedAxis = case LinkedGrid.at x y innerGrid of
+                        maybeUpdatedAxis = case LinkedGrid.at entry.x entry.y innerGrid of
                             Just location ->
-                                LinkedGrid.makeAxis location direction
-                                    |> push
-                                    |> Maybe.andThen (moveToCell (getObjectId object) 0 1 Nothing)
-                                    |> Maybe.map pull
+                                let
+                                    axis = LinkedGrid.makeAxis location direction
+-- should really be flipping only the object in question
+                                    flipThenPush () = flipCellDirection axis |> push
+                                in
+                                if bounce then
+                                    axis
+                                        |> push
+                                        |> maybeOrElseLazy flipThenPush
+                                        |> Maybe.andThen (moveToCell (getObjectId object) 0 1 Nothing)
+                                        |> Maybe.map pull
+                                else
+                                    axis
+                                        |> push
+                                        |> Maybe.andThen (moveToCell (getObjectId object) 0 1 (Just direction))
+                                        |> Maybe.map pull
 
                             _ ->
                                 Nothing
@@ -180,7 +206,7 @@ doMovesAndPushes initialGrid =
                         _ -> innerGrid
 
             in
-            List.foldr moveFoldFunc grid movingObjects
+            List.foldr moveFoldFunc grid entry.objects
 
     in
-    List.foldr impl initialGrid moveCoords
+    ( List.length moveCoords, List.foldr impl initialGrid moveCoords )

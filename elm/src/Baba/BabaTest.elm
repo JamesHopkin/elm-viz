@@ -68,11 +68,20 @@ testGrid =
     --in
     --Maybe.withDefault random withMove
 
+shouldMove obj =
+    if objectIs Types.Move obj then
+        Just (getObjectDirection obj)
+
+    else
+        Nothing
+
+move = doMovesAndPushes shouldMove True >> Tuple.second
+
 problemGraphEvo =
     [ testGrid
-    , testGrid |> doMovesAndPushes
-    , testGrid |> doMovesAndPushes |> doMovesAndPushes
-    , testGrid |> doMovesAndPushes |> doMovesAndPushes |> doMovesAndPushes
+    , testGrid |> move
+    , testGrid |> move |> move
+    , testGrid |> move |> move |> move
     ]
 
 init : (Msg -> msg) -> ( Model, Cmd msg )
