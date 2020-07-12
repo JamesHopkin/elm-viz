@@ -1,5 +1,5 @@
 module Baba.LinkedGrid exposing ( LinkedGrid, toDebugString, Location, foldLocations, getLocationCoordinates,
-                                make, Direction (..), flipDir, gridFromLocation,
+                                make, Direction (..), flipDir, gridFromLocation, getDimensions,
                                 fromLists, at, getContents, setContents, above, right, below, left,
                                 Axis, makeAxis, gridFromAxis, axisOrigin, axisGetAt, axisGet, axisSetAt, axisSet,
                                 axisForward, flipAxis, getAxisDirection,

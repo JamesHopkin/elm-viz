@@ -1,5 +1,6 @@
-module Baba.Baba exposing ( Model, Msg, init, update, subscription,
-                            wait, countChars )
+module Baba.Baba exposing ( Model, Msg(..), init, update, subscription,
+                            wait, countChars)
+-- remember to remove exposure of Msg constructors!
 
 import Bitwise
 
@@ -10,6 +11,8 @@ import List.Extra
 
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
 import Baba.Cell as Cell
+import Baba.Destroy as Destroy
+import Baba.Graphics as Graphics
 import Baba.Move as Move
 import Baba.Rules as Rules
 import Baba.Types as Types
@@ -85,23 +88,90 @@ applyRules grid =
     Cell.foldObjects foldFunc grid grid
 
 -- single step of the grid
-wait : Cell.Grid -> Cell.Grid
-wait grid =
+wait : List Cell.Grid -> List Cell.Grid
+wait = turn Nothing
+    --let
+    --    shouldMove obj =
+    --        if Cell.objectIs Types.Move obj then
+    --            Just (Cell.getObjectDirection obj)
+
+    --        else
+    --            Nothing
+
+    --    chainDestroys maybeGrid =
+    --        case maybeGrid of
+    --            Just grid ->
+
+    --in
+    --grid
+    --    |> applyRules
+    --    |> Move.doMovesAndPushes shouldMove True
+    --    |> Maybe.map Destroy.doDestroys
+    --    |> Maybe.withDefault grid
+
+
+turn : Maybe Direction -> List Cell.Grid -> List Cell.Grid
+turn youDirection undoStack =
+    case List.head undoStack of
+        Just currentGrid ->
+            let
+
+                -- rules
+                gridWithUpToDateRules = applyRules currentGrid
+
+                -- you
+                ( numberOfYousMoved, afterYousMoved ) =
+                    case youDirection of
+                        Just direction ->
+                            let
+                                youMoveFunc obj = 
+                                    if Cell.objectIs Types.You obj then
+                                        Just direction 
+                                    else
+                                        Nothing
+                            in
+                            Move.doMovesAndPushes youMoveFunc False gridWithUpToDateRules
+
+                        _ ->
+                            ( 0, gridWithUpToDateRules )
+
+                -- moves
+                shouldMove obj =
+                    if Cell.objectIs Types.Move obj then
+                        Just (Cell.getObjectDirection obj)
+
+                    else
+                        Nothing
+
+                ( numberOfOthersMoved, afterAllMoves ) = Move.doMovesAndPushes shouldMove True afterYousMoved
+
+                --dummy = Debug.log "move counts" [numberOfYousMoved, numberOfOthersMoved]
+
+                updatedGrid =
+                    if numberOfYousMoved + numberOfOthersMoved > 0 then
+                        Just (Destroy.doDestroys afterAllMoves)
+                    else
+                        Nothing
+            in
+            case updatedGrid of
+                Just grid ->
+                    grid :: undoStack
+
+                _ ->
+                    undoStack
+
+        _ -> []
+
+turnAndUpdateGraphics maybeDirection model =
     let
-        shouldMove obj =
-            if Cell.objectIs Types.Move obj then
-                Just (Cell.getObjectDirection obj)
-
-            else
-                Nothing
+        newStack = turn maybeDirection model.undoStack
     in
-    grid
-        |> applyRules
-        |> Move.doMovesAndPushes shouldMove True
-        |> Tuple.second
-
-
-
+    { model
+    | undoStack = newStack
+    , graphics = case List.head newStack of
+        Just grid -> Graphics.setGrid grid model.graphics
+        _ -> model.graphics
+    }
 
 
 
@@ -146,58 +216,73 @@ type Msg
     = MoveYou Direction
     | Undo
     | Dummy
+    | GraphicsMsg Graphics.Msg
 
-type alias Model = List Cell.Grid
+type alias Model =
+    { undoStack : List Cell.Grid
+    , debugStr : String
+    , graphics : Graphics.Model
+    }
 
 init : (Msg -> msg) -> ( Model, Cmd msg )
-init _ = ([ LinkedGrid.fromLists Cell.emptyCell 7 7
-    (Cell.stringListToCells
-        [ ""
-        , " a"
-        , ""
-        , " A=Y"
-        , ""
-        , "  aP"
-        ]
-    )], Cmd.none )
+init _ = (
+    { undoStack =
+        [ LinkedGrid.fromLists Cell.emptyCell 9 9
+        (Cell.stringListToCells
+            [ " z      C"
+            , "aaa  ww ="
+            , "A=S cww M"
+            , "Z=Y"
+            , "W=K r"
+            , "R=S   P"
+            , "aaa R="
+            ]
+        )]
+    , debugStr = ""
+    , graphics = Graphics.init
+    }, Cmd.none )
 
 update : Msg -> Model -> Model 
 update msg model =
     case msg of
         MoveYou direction ->
             let
-                youMoveFunc obj = 
-                    if Cell.objectIs Types.You obj then
-                        Just direction 
-                    else
-                        Nothing
+                newModel = turnAndUpdateGraphics (Just direction) model
 
-                doMove grid =
-                    grid
-                        |> applyRules
-                        |> Move.doMovesAndPushes youMoveFunc False
+                debugStr = case newModel.undoStack of
+                    grid :: _ -> 
+                        --let
+                        --    dummy = Debug.log "game objects" (countChars grid)
+                        --in
+                        List.map Rules.ruleDebugString (Rules.lookForRules grid)
+                            |> String.join "\n"
+                    _ -> ""
             in
-            case List.head model of
-                Just grid ->
-                    let
-                        ( numMoved, newGrid ) = doMove grid
-                    in
-                    if numMoved > 0 then
-                        newGrid :: model
-                    else
-                        model
-
-                _ -> model
+            { newModel
+            | debugStr = debugStr
+            }
 
         Undo ->
-            case model of
+            case model.undoStack of
                 _ :: _ :: _ ->
-                    List.drop 1 model
+                    { model
+                    | undoStack = List.drop 1 model.undoStack
+                    }
 
                 _ ->
                     model
 
-        _ -> model
+        -- keyboard nonsense
+        Dummy -> model
+
+        GraphicsMsg graphicsMsg -> 
+            { model 
+            | graphics = Graphics.update graphicsMsg model.graphics
+            }
 
 subscription : (Msg -> msg) -> Sub msg
-subscription msg = Browser.Events.onKeyDown (keyDecoder msg)
+subscription msg = 
+    Sub.batch
+        [ Browser.Events.onKeyDown (keyDecoder msg)
+        , Graphics.subscription (GraphicsMsg >> msg)
+        ]

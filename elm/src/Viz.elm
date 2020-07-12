@@ -2,7 +2,7 @@ port module Viz exposing ( main )
 
 import Browser
 import Html exposing ( div, h3, pre, text, table, td, tr )
-import Html.Attributes exposing ( class )
+import Html.Attributes exposing ( class, style )
 
 import Time
 
@@ -15,6 +15,8 @@ import Dict exposing ( Dict )
 import Baba.Baba
 import Baba.BabaTest
 
+-- how do I pipe this through?
+import Baba.Graphics
 
 type alias RenderData =
   { id: Int
@@ -81,8 +83,6 @@ update msg model =
         , Cmd.none
       )
 
-
-
 type alias Flags = Int --Decode.Value
 
 initialGraph = Graph.makeGraph
@@ -137,13 +137,14 @@ subscriptions _ =
 
 tdFromString str = td [] [ pre [] [ text str ] ]
 
+
 view : Model -> Html.Html Msg
 view model =
   div []
     [ h3 [] [ text "Baba!" ]
     , table [ class "table" ]
       [ tr [] 
-         ( case List.head model.baba of
+         ( case List.head model.baba.undoStack of
             Just grid ->
               [tdFromString (Baba.BabaTest.gridToStr grid)]
 
@@ -151,14 +152,17 @@ view model =
               []
         )
       ]
-    --, h3 [] [ text "What's up with this?" ]
-    --, table [ class "table" ]
-    --  [ tr []
-    --    (Baba.BabaTest.problemGraphEvo
-    --      |> List.map Baba.BabaTest.gridToStr
-    --      |> List.map tdFromString
-    --    )
-    --  ]
+    , pre [] [ text model.baba.debugStr ]
+    , h3 [] [ text "Graphics test" ]
+    , Baba.Graphics.view (Baba.Baba.GraphicsMsg >> BabaMsg) model.baba.graphics
+    , h3 [] [ text "What's up with this?" ]
+    , table [ class "table" ]
+      [ tr []
+        (Baba.BabaTest.problemGraphEvo
+          |> List.map Baba.BabaTest.gridToStr
+          |> List.map tdFromString
+        )
+      ]
     , h3 [] [ text "Move tests" ]
     , table [ class "table" ]
       [ tr []

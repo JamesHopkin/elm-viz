@@ -191,8 +191,12 @@ update msg model =
                     dummy = Debug.log "object counts" <| case List.head model of
                         Just grid -> countChars grid
                         _ -> []
+
+                    withPretendUndoStack grid =
+                        Baba.wait [grid] |> List.head
                 in
-                List.map Baba.wait model
+                List.filterMap withPretendUndoStack model
+
 
         RandomGrid chars ->
                 (makeRandomGrid chars

@@ -51,13 +51,11 @@ type Stative
     | Open
     | Closed
     | Float_
-    | You
-
-    -- not added to strings or flags yet (generate?)
     | Hot
     | Melt
     | Sink
     | Weak
+    | You
 
 stativeDebugString stative = case stative of
     Push -> "push"
@@ -70,6 +68,10 @@ stativeDebugString stative = case stative of
     Open -> "open"
     Closed -> "closed"
     Float_ -> "float"
+    Hot -> "hot"
+    Melt -> "melt"
+    Sink -> "sink"
+    Weak -> "weak"
     _ -> "you"
 
 type Subject
@@ -145,7 +147,12 @@ flagFor v = case v of
     Open    -> 0x0080
     Closed  -> 0x0100
     Float_  -> 0x0200
-    _       -> 0x0400
+    Hot     -> 0x0400
+    Melt    -> 0x0800
+    Sink    -> 0x1000
+    Weak    -> 0x2000
+    _       -> 0x4000
+
 
 flagsFor : List Stative -> Int
 flagsFor verbs = List.foldr (flagFor >> Bitwise.or) 0 verbs

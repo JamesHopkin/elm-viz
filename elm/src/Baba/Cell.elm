@@ -281,7 +281,7 @@ firstStative cell =
 
 showIds = False
 showAllContents = False
-showDirections = True
+showDirections = False
 
 objectDebugChar : Object -> Char
 objectDebugChar object =
@@ -290,9 +290,11 @@ objectDebugChar object =
         Text (Types.NounText (Types.Noun c)) -> Char.toUpper c
         Text (Types.StativeText stative) -> 
             case stative of
-                Types.Move -> 'M'
-                Types.Push -> 'P'
+                Types.Sink -> 'K'
                 Types.Pull -> 'L'
+                Types.Move -> 'M'
+                Types.Stop -> 'S'
+                Types.Push -> 'P'
                 Types.You -> 'Y'
                 _ -> '£'
 
@@ -368,14 +370,20 @@ stringListToCells rows =
                             if Char.isUpper c then
                                 let
                                     text = case c of 
-                                            'P' ->
-                                                Types.StativeText Types.Push
+                                            'K' ->
+                                                Types.StativeText Types.Sink
+
+                                            'L' ->
+                                                Types.StativeText Types.Pull
 
                                             'M' ->
                                                 Types.StativeText Types.Move
 
-                                            'L' ->
-                                                Types.StativeText Types.Pull
+                                            'P' ->
+                                                Types.StativeText Types.Push
+
+                                            'S' ->
+                                                 Types.StativeText Types.Stop
 
                                             'Y' ->
                                                 Types.StativeText Types.You
