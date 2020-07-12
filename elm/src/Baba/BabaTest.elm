@@ -193,7 +193,7 @@ update msg model =
                         _ -> []
 
                     withPretendUndoStack grid =
-                        Baba.wait [grid] |> List.head
+                        Baba.turn Nothing [grid] |> List.head
                 in
                 List.filterMap withPretendUndoStack model
 

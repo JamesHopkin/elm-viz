@@ -1,5 +1,5 @@
 module Baba.Baba exposing ( Model, Msg(..), init, update, subscription,
-                            wait, countChars)
+                            turn, wait, countChars)
 -- remember to remove exposure of Msg constructors!
 
 import Bitwise
@@ -88,8 +88,8 @@ applyRules grid =
     Cell.foldObjects foldFunc grid grid
 
 -- single step of the grid
-wait : List Cell.Grid -> List Cell.Grid
-wait = turn Nothing
+wait : Model -> Model
+wait = turnAndUpdateGraphics Nothing
     --let
     --    shouldMove obj =
     --        if Cell.objectIs Types.Move obj then
@@ -162,16 +162,21 @@ turn youDirection undoStack =
 
         _ -> []
 
+updateGraphics model = 
+    case List.head model.undoStack of
+        Just grid ->
+            { model
+            | graphics = Graphics.setGrid grid model.graphics
+            }
+     
+        _ ->
+            model
+
 turnAndUpdateGraphics maybeDirection model =
-    let
-        newStack = turn maybeDirection model.undoStack
-    in
     { model
-    | undoStack = newStack
-    , graphics = case List.head newStack of
-        Just grid -> Graphics.setGrid grid model.graphics
-        _ -> model.graphics
+    | undoStack = turn maybeDirection model.undoStack
     }
+    |> updateGraphics
 
 
 
@@ -268,6 +273,7 @@ update msg model =
                     { model
                     | undoStack = List.drop 1 model.undoStack
                     }
+                    |> updateGraphics
 
                 _ ->
                     model
