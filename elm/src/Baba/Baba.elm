@@ -232,15 +232,21 @@ type alias Model =
 init : (Msg -> msg) -> ( Model, Cmd msg )
 init _ = (
     { undoStack =
-        [ LinkedGrid.fromLists Cell.emptyCell 9 9
+        [ LinkedGrid.fromLists Cell.emptyCell 14 14
         (Cell.stringListToCells
-            [ " z      C"
-            , "aaa  ww ="
-            , "A=S cww M"
-            , "Z=Y"
-            , "W=K r"
-            , "R=S   P"
-            , "aaa R="
+            [ "ZA aaaaaaaa"
+            , "== a      a"
+            , "YS a z  r a"
+            , "  Ta      a"
+            , "  =a    r a"
+            , "  Ka      a"
+            , "aaaatttaaaaaaa"
+            , "a      a     a"
+            , "a      a R=P a"
+            , "attt         a"
+            , "attt   a F=W a"
+            , "aftt   a     a"
+            , "aaaaaaaaaaaaaa"
             ]
         )]
     , debugStr = ""

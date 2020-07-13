@@ -4,6 +4,7 @@ module Baba.Graphics exposing ( Model, Msg, init, update, view, subscription,
 import Basics exposing ( toFloat, round )
 
 import Browser.Events
+import Dict
 
 import Html exposing ( div, text )
 import Html.Attributes as Attrs
@@ -20,6 +21,7 @@ import Color
 import Baba.Cell as Cell
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction(..) )
 
+animDurationMillis = 200
 
 spritesLoader msg = loadFromImageUrl "links.png" (msg << TextureLoaded)
 
@@ -36,15 +38,21 @@ linkUp              = makeSprite 60  0 False
 linkSwordLeft       = makeSprite 235 0 False
 linkSwordRight      = makeSprite 235 0 True
 
-renderSprite sprite x y spriteSheet =
+renderSprite sprite x y alpha spriteSheet =
     let
         reflectScale = scale (if sprite.reflect then -1 else 1) 1
     in
-    Canvas.texture [transform [translate (x + halfSpriteWidth) (y + 1), reflectScale]] (-halfSpriteWidth, 0) (sprite.sprite spriteSheet)
+    Canvas.texture
+        [ Canvas.Settings.Advanced.alpha alpha
+        , transform [translate (x + halfSpriteWidth) (y + 1), reflectScale]
+        ]
+        (-halfSpriteWidth, 0) (sprite.sprite spriteSheet)
 
 setGrid grid model =
     { model
     | grid = Just grid
+    , previousGrid = model.grid
+    , lastUpdateTime = model.lastAnimTime
     }
 
 type Msg
@@ -54,12 +62,18 @@ type Msg
 type alias Model =
     { texture : Maybe Texture.Texture
     , grid : Maybe Cell.Grid
+    , previousGrid : Maybe Cell.Grid
+    , lastAnimTime : Posix
+    , lastUpdateTime : Posix
     }
 
 init : Model
 init = 
     { texture = Nothing
     , grid = Nothing
+    , previousGrid = Nothing
+    , lastAnimTime = Time.millisToPosix 0
+    , lastUpdateTime = Time.millisToPosix 0
     }
 
 update msg model =
@@ -68,41 +82,72 @@ update msg model =
             { model | texture = texture }
 
         AnimationFrame time ->
-            model
+            { model | lastAnimTime = time }
 
 --(( Int, Int, Object ) -> a -> a) -> a -> Grid -> a
 
 font = Text.font { size = 24, family = "sans-serif" }
 
-render spriteSheet grid =
+renderObject spriteSheet obj animX animY alpha =
+    let
+        x = animX * 32
+        y = animY * 32 + 5
+    in
+    case Cell.objectDebugChar obj of
+        'z' -> 
+            let
+                sprite = case Cell.getObjectDirection obj of
+                    Left -> linkSwordLeft
+                    Right -> linkSwordRight
+                    Up -> linkUp
+                    _ -> link
+            in
+                renderSprite sprite x y alpha spriteSheet
+
+        '=' ->
+            Canvas.text [Text.font { size = 12, family = "sans-serif" }] ( x + 10, y + 20 ) "is"
+
+        c ->
+            Canvas.text [font] ( x + 5, y + 24 ) (String.fromChar c)
+
+renderGrid spriteSheet dicts delta grid =
     let
         foldFunc : ( Int, Int, Cell.Object ) -> List Canvas.Renderable -> List Canvas.Renderable
         foldFunc ( objX, objY, obj ) acc =
             let
-                c = Cell.objectDebugChar obj
 
-                x = toFloat (objX * 32) 
-                y = toFloat (objY * 32 + 5) 
+                ( animX, animY ) = 
+                    case dicts of
+                        Just ( prev, _ ) ->
+                            case Dict.get (Cell.getObjectId obj) prev of
+                                Just ( prevX, prevY, _ ) ->
+                                    ( toFloat prevX * (1 - delta) + toFloat objX * delta
+                                    , toFloat prevY * (1 - delta) + toFloat objY * delta
+                                    )
 
-                el = case c of
-                    'z' -> 
-                        let
-                            sprite = case Cell.getObjectDirection obj of
-                                Left -> linkSwordLeft
-                                Right -> linkSwordRight
-                                Up -> linkUp
-                                _ -> link
-                        in
-                            renderSprite sprite x y spriteSheet
+                                _ ->
+                                    ( toFloat objX, toFloat objY )
+
+                        _ ->
+                            ( toFloat objX, toFloat objY )
 
 
-                    _ ->
-                        Canvas.text [font] ( x + 5, y + 24 ) (String.fromChar c)
             in
-            el :: acc
+            (renderObject spriteSheet obj animX animY 1.0) :: acc
     in
         Cell.foldObjects foldFunc [] grid
 
+millisBetween from to = Time.posixToMillis to - Time.posixToMillis from
+
+
+gridToIdMap grid = 
+    let
+        foldFunc ( x, y, obj ) acc = ( Cell.getObjectId obj, ( x, y, obj ) ) :: acc
+    in
+    Cell.foldObjects foldFunc [] grid
+        |> Dict.fromList
+
+view : (Msg -> msg) -> Model -> Html.Html msg
 view msg model =
     case model.grid of
         Just grid -> 
@@ -110,6 +155,24 @@ view msg model =
                 ( gridWidth, gridHeight ) = LinkedGrid.getDimensions grid
                 canvasWidth = gridWidth * 32
                 canvasHeight = gridHeight * 32
+
+                delta = toFloat (millisBetween model.lastUpdateTime model.lastAnimTime)
+                            / toFloat animDurationMillis
+
+                objectsInPreviousGrid =
+                    if delta < 0 || delta >= 1 then
+                        Nothing
+                    else
+                        case model.previousGrid of
+                            Nothing ->
+                               Nothing
+
+                            Just prev ->
+                                let
+                                    prevMap = gridToIdMap prev
+                                    gridMap = gridToIdMap grid
+                                in
+                                    Just ( prevMap, Dict.diff prevMap gridMap )
             in
             Canvas.toHtmlWith
 
@@ -122,7 +185,19 @@ view msg model =
                     [Canvas.rect (0, 0) (toFloat canvasWidth) (toFloat canvasHeight)]
               ] ++ 
                 (case model.texture of
-                    Just texture -> render texture grid
+                    Just texture ->
+                        renderGrid texture objectsInPreviousGrid delta grid
+                        ++
+                        (case objectsInPreviousGrid of
+                            Just ( _, destroyed ) ->
+                                destroyed
+                                    |> Dict.toList
+                                    |> List.map (\(_, ( x, y, obj )) -> renderObject texture obj (toFloat x) (toFloat y) (1.0 - delta))
+
+                            _ ->
+                                []
+                        )
+
 
                     _ -> []
                 )

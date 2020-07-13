@@ -5,7 +5,7 @@ module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveT
                             makeObject, makeDirectedObject, makeTextObject,
                             setObjectDirection, setObjectFlags, setObjectIs, updateObjectInCell,
                             flipDir, foldObjects,
-                            objectDebugChar, cellDebugString, stringListToCells, stativeFromOccupant,
+                            objectDebugChar, cellDebugString, stringListToCells,
 
                             ObjectKind(..) ) -- may encapsulate further
 
@@ -183,16 +183,6 @@ moveToCell id from to maybeDirection axis =
     in
     result
 
-stativeFromOccupant c = case c of
-    'P' -> Types.Push
-    'M' -> Types.Move
-    'D' -> Types.Defeat
-    'W' -> Types.Win
-    'O' -> Types.Open
-    'C' -> Types.Closed
-    'F' -> Types.Float_
-    _ -> Types.You
-
 foldObjects : (( Int, Int, Object ) -> a -> a) -> a -> Grid -> a
 foldObjects f acc grid =
     let
@@ -295,6 +285,7 @@ objectDebugChar object =
                 Types.Move -> 'M'
                 Types.Stop -> 'S'
                 Types.Push -> 'P'
+                Types.Win -> 'W'
                 Types.You -> 'Y'
                 _ -> '£'
 
@@ -384,6 +375,9 @@ stringListToCells rows =
 
                                             'S' ->
                                                  Types.StativeText Types.Stop
+
+                                            'W' ->
+                                                Types.StativeText Types.Win
 
                                             'Y' ->
                                                 Types.StativeText Types.You
