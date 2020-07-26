@@ -159,6 +159,7 @@ turn youDirection currentGrid =
     else
         Nothing
 
+updateGraphics : Model -> Model
 updateGraphics model = 
     case List.head model.undoStack of
         Just grid ->
@@ -236,29 +237,34 @@ type alias Model =
     , graphics : Graphics.Model
     }
 
-init : (Msg -> msg) -> ( Model, Cmd msg )
-init _ = (
-    { undoStack =
-        [ LinkedGrid.fromLists Cell.emptyCell 14 14
-        (Cell.stringListToCells
-            [ "ZA aaaaaaaa"
-            , "== a      a"
-            , "YS a z  r a"
-            , "  Ta      a"
-            , "  =a    r a"
-            , "  Ka      a"
-            , "aaaatttaaaaaaa"
-            , "a      a     a"
-            , "a      a R=P a"
-            , "attt       L a"
-            , "attt   a F=W a"
-            , "aftt   a     a"
-            , "aaaaaaaaaaaaaa"
-            ]
-        )]
+initialModel = 
+    let
+
+        grid = LinkedGrid.fromLists Cell.emptyCell 14 14
+            <| Cell.stringListToCells
+                [ "ZA aaaaaaaa"
+                , "== a      a"
+                , "YS a z  r a"
+                , "  Ta      a"
+                , "  =a    r a"
+                , "  Ka      a"
+                , "aaaatttaaaaaaa"
+                , "a      a     a"
+                , "a      a R=P a"
+                , "attt       L a"
+                , "attt   a F=W a"
+                , "aftt   a     a"
+                , "aaaaaaaaaaaaaa"
+                ]
+    in
+    { undoStack = [grid]
     , debugStr = ""
-    , graphics = Graphics.init
-    }, Cmd.none )
+    , graphics = Graphics.init 
+    }
+    |> updateGraphics
+
+init : (Msg -> msg) -> ( Model, Cmd msg )
+init _ = ( initialModel, Cmd.none )
 
 update : Msg -> Model -> Model 
 update msg model =
@@ -295,9 +301,7 @@ update msg model =
         Dummy -> model
 
         GraphicsMsg graphicsMsg -> 
-            { model 
-            | graphics = Graphics.update graphicsMsg model.graphics
-            }
+            { model | graphics = Graphics.update graphicsMsg model.graphics }
 
 subscription : (Msg -> msg) -> Sub msg
 subscription msg = 

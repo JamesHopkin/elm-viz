@@ -23,7 +23,7 @@ import Baba.LinkedGrid as LinkedGrid exposing ( Direction(..) )
 
 animDurationMillis = 350
 
-spritesLoader msg = loadFromImageUrl "blah.png" (msg << TextureLoaded)
+spritesLoader msg = loadFromImageUrl "images/blah.png" (msg << TextureLoaded)
 
 spriteWidthInt = 24
 spriteWidth = 24.0

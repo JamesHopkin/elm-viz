@@ -291,9 +291,9 @@ update msg model =
     case msg of
         Update _ ->
                 let
-                    dummy = Debug.log "object counts" <| case List.head model of
-                        Just grid -> countChars grid
-                        _ -> []
+                    --dummy = Debug.log "object counts" <| case List.head model of
+                        --Just grid -> countChars grid
+                        --_ -> []
 
                     withPretendUndoStack grid =
                         Baba.turn Nothing grid

@@ -141,51 +141,8 @@ tdFromString str = td [] [ pre [] [ text str ] ]
 view : Model -> Html.Html Msg
 view model =
   div []
-    [ h3 [] [ text "Tests" ]
-    , div [] (List.map text Baba.BabaTest.testResults)
-    , h3 [] [ text "Baba!" ]
-    , table [ class "table" ]
-      [ tr [] 
-         ( case List.head model.baba.undoStack of
-            Just grid ->
-              [tdFromString (Baba.BabaTest.gridToStr grid)]
-
-            Nothing ->
-              []
-        )
-      ]
-    , pre [] [ text model.baba.debugStr ]
-    , h3 [] [ text "Graphics test" ]
-    , Baba.Graphics.view (Baba.Baba.GraphicsMsg >> BabaMsg) model.baba.graphics
-    , h3 [] [ text "What's up with this?" ]
-    , table [ class "table" ]
-      [ tr []
-        (Baba.BabaTest.problemGraphEvo
-          |> List.map Baba.BabaTest.gridToStr
-          |> List.map tdFromString
-        )
-      ]
-    , h3 [] [ text "Move tests" ]
-    , table [ class "table" ]
-      [ tr []
-        (model.babaTest
-          |> List.map Baba.BabaTest.gridToStr
-          |> List.map tdFromString
-        )
-      ]
-    , h3 [] [ text "Rules test" ]
-    , table [ class "table" ]
-      [ tr []
-        [ tdFromString Baba.BabaTest.rulesTestGridDebugStr
-        , tdFromString Baba.BabaTest.rulesTestResult
-        ]
-      ]
-    , text <| "Graph state: " ++ (
-      case model.state of
-        Idle -> "idle"
-        InFlight -> "in flight"
-        Pending -> "pending"
-      )
+    [ 
+     Baba.Graphics.view (Baba.Baba.GraphicsMsg >> BabaMsg) model.baba.graphics
     ]
 
 main : Program Flags Model Msg
