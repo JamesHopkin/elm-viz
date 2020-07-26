@@ -13,16 +13,12 @@ import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
 import Baba.Cell as Cell
 import Baba.Destroy as Destroy
 import Baba.Graphics as Graphics
+import Baba.Make as Make
 import Baba.Move as Move
 import Baba.Rules as Rules
 import Baba.Types as Types
 
-
-
-
-isJust maybe = case maybe of
-    Just _ -> True
-    _ -> False
+import Baba.Util as Util
 
 {- little bit of thought needed for moving multiple
     some cases:
@@ -48,7 +44,7 @@ isJust maybe = case maybe of
 
 
 
-applyRules : Cell.Grid -> Cell.Grid
+applyRules : Cell.Grid -> ( List Rules.Rule, Cell.Grid )
 applyRules grid =
     let
         rules = Rules.lookForRules grid
@@ -57,13 +53,13 @@ applyRules grid =
         foldFunc ( x, y, object ) gridToUpdate =
             -- just doing statives
                     case Cell.getObjectWord object of 
-                        Cell.Instance (Types.Noun objectChar) ->
+                        Cell.Instance objectNoun ->
                             let
                                 ruleFoldFunc : Rules.Rule -> Int -> Int
                                 ruleFoldFunc rule flags =
                                     case rule of
-                                        Rules.Is (Types.NounSubject (Types.Noun c)) (Types.Stative stative) ->
-                                            if c == objectChar then
+                                        Rules.Is (Types.NounSubject noun) (Types.Stative stative) ->
+                                            if Types.nounsEqual noun objectNoun then
                                                 Bitwise.or flags (Types.flagFor stative)
                                             else
                                                 flags
@@ -85,7 +81,7 @@ applyRules grid =
                         _ -> gridToUpdate
 
     in
-    Cell.foldObjects foldFunc grid grid
+    ( rules, Cell.foldObjects foldFunc grid grid )
 
 -- single step of the grid
 wait : Model -> Model
@@ -110,57 +106,58 @@ wait = turnAndUpdateGraphics Nothing
     --    |> Maybe.withDefault grid
 
 
-turn : Maybe Direction -> List Cell.Grid -> List Cell.Grid
-turn youDirection undoStack =
-    case List.head undoStack of
-        Just currentGrid ->
-            let
+turn : Maybe Direction -> Cell.Grid -> Maybe Cell.Grid
+turn youDirection currentGrid =
+    let
 
-                -- rules
-                gridWithUpToDateRules = applyRules currentGrid
+        -- rules
+        ( rules, gridWithUpToDateRules ) = applyRules currentGrid
 
-                -- you
-                ( numberOfYousMoved, afterYousMoved ) =
-                    case youDirection of
-                        Just direction ->
-                            let
-                                youMoveFunc obj = 
-                                    if Cell.objectIs Types.You obj then
-                                        Just direction 
-                                    else
-                                        Nothing
-                            in
-                            Move.doMovesAndPushes youMoveFunc False gridWithUpToDateRules
-
-                        _ ->
-                            ( 0, gridWithUpToDateRules )
-
-                -- moves
-                shouldMove obj =
-                    if Cell.objectIs Types.Move obj then
-                        Just (Cell.getObjectDirection obj)
-
-                    else
-                        Nothing
-
-                ( numberOfOthersMoved, afterAllMoves ) = Move.doMovesAndPushes shouldMove True afterYousMoved
-
-                --dummy = Debug.log "move counts" [numberOfYousMoved, numberOfOthersMoved]
-
-                updatedGrid =
-                    if numberOfYousMoved + numberOfOthersMoved > 0 then
-                        Just (Destroy.doDestroys afterAllMoves)
-                    else
-                        Nothing
-            in
-            case updatedGrid of
-                Just grid ->
-                    grid :: undoStack
+        -- you
+        ( numberOfYousMoved, afterYousMoved ) =
+            case youDirection of
+                Just direction ->
+                    let
+                        youMoveFunc obj = 
+                            if Cell.objectIs Types.You obj then
+                                Just direction 
+                            else
+                                Nothing
+                    in
+                    Move.doMovesAndPushes youMoveFunc False gridWithUpToDateRules
 
                 _ ->
-                    undoStack
+                    ( 0, gridWithUpToDateRules )
 
-        _ -> []
+        -- moves
+        shouldMove obj =
+            if Cell.objectIs Types.Move obj then
+                Just (Cell.getObjectDirection obj)
+
+            else
+                Nothing
+
+        ( numberOfOthersMoved, afterAllMoves ) = Move.doMovesAndPushes shouldMove True afterYousMoved
+
+        --dummy = Debug.log "move counts" [numberOfYousMoved, numberOfOthersMoved]
+
+        transform grid =
+            let
+                transfromRules = List.filter (\r -> Util.isJust (Rules.getTransform r)) rules
+            in
+            if List.isEmpty transfromRules then
+                grid
+            else
+                Make.doTransformations transfromRules grid
+
+
+    in
+    if numberOfYousMoved + numberOfOthersMoved > 0 then
+        Destroy.doDestroys afterAllMoves
+            |> Make.doTransformations rules
+            |> Just
+    else
+        Nothing
 
 updateGraphics model = 
     case List.head model.undoStack of
@@ -173,10 +170,20 @@ updateGraphics model =
             model
 
 turnAndUpdateGraphics maybeDirection model =
-    { model
-    | undoStack = turn maybeDirection model.undoStack
-    }
-    |> updateGraphics
+    case model.undoStack of
+        currentGrid :: _ ->
+            case turn maybeDirection currentGrid of
+                Just newGrid ->
+
+                    { model
+                    | undoStack = newGrid :: model.undoStack
+                    }
+                    |> updateGraphics
+
+                _ ->
+                    model
+        _ ->
+            model
 
 
 
@@ -243,7 +250,7 @@ init _ = (
             , "aaaatttaaaaaaa"
             , "a      a     a"
             , "a      a R=P a"
-            , "attt         a"
+            , "attt       L a"
             , "attt   a F=W a"
             , "aftt   a     a"
             , "aaaaaaaaaaaaaa"

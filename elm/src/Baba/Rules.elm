@@ -1,4 +1,5 @@
-module Baba.Rules exposing ( lookForRules, ruleDebugString, Rule(..) )
+module Baba.Rules exposing ( lookForRules, ruleDebugString, getTransform,
+                            Rule(..) )
 
 import Baba.Cell exposing (..)
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
@@ -99,3 +100,11 @@ lookForRules grid =
             in
                 rowRules ++ columnRules
         _ -> []
+
+getTransform rule = case rule of
+    Is (Types.NounSubject (Types.Noun subj))
+        (Types.NounComplement (Types.Noun obj)) ->
+        Just ( subj, obj )
+
+    _ ->
+        Nothing

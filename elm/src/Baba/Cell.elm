@@ -5,7 +5,7 @@ module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveT
                             makeObject, makeDirectedObject, makeTextObject,
                             setObjectDirection, setObjectFlags, setObjectIs, updateObjectInCell,
                             flipDir, foldObjects,
-                            objectDebugChar, cellDebugString, stringListToCells,
+                            objectDebugChar, cellDebugString, stringListToCells, mismatch,
 
                             ObjectKind(..) ) -- may encapsulate further
 
@@ -32,6 +32,36 @@ type alias ObjectState =
     , flags: Int
     , lastMovedTick: Int
     }
+
+mismatch : Grid -> Grid -> List ( Int, Int )
+mismatch a b =
+    let
+        foldFunc : Location -> List ( Int, Int ) -> List ( Int, Int )
+        foldFunc loc acc =
+            let
+                ( x, y ) = LinkedGrid.getLocationCoordinates loc
+            in
+            case ( LinkedGrid.at x y a, LinkedGrid.at x y b ) of
+                ( Just cellA, Just cellB ) ->
+                    let
+                        sortedDebugChars : Location -> List Char
+                        sortedDebugChars = LinkedGrid.getContents >> List.map objectDebugChar >> List.sort
+                    in
+                    if compare (sortedDebugChars cellA) (sortedDebugChars cellB) == EQ then
+                        acc 
+                    else
+                        let
+                            lengthsLog = Debug.log "lengths" [List.length (sortedDebugChars cellA), List.length (sortedDebugChars cellB)]
+                            idsLog = Debug.log "chars" (sortedDebugChars cellA ++ sortedDebugChars cellB)
+                        in
+                        ( x, y ) :: acc
+
+                _ ->
+                    acc
+
+    in
+
+    LinkedGrid.foldLocations foldFunc [] a
 
 
 
@@ -123,10 +153,6 @@ addToCellAt offset object axis =
     in
         LinkedGrid.axisSet newContents axis
 addToCell = addToCellAt 0
-
-isJust m = case m of
-    Just _ -> True
-    _ -> False
 
 updateObjectInCell : Object -> Location -> Location
 updateObjectInCell updatedObject loc =
@@ -374,7 +400,7 @@ stringListToCells rows =
                                                 Types.StativeText Types.Push
 
                                             'S' ->
-                                                 Types.StativeText Types.Stop
+                                                Types.StativeText Types.Stop
 
                                             'W' ->
                                                 Types.StativeText Types.Win

@@ -4,6 +4,10 @@ import Bitwise
 
 type Noun = Noun Char
 
+nounsEqual lhs rhs = case ( lhs, rhs ) of
+    ( Noun lc, Noun rc ) ->
+        lc == rc
+
 -- use all lower case chars internally, but show (and parse) nouns as upper case
 -- (instances lower case)
 nounDebugString noun = case noun of

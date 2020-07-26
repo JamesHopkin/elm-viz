@@ -1,6 +1,8 @@
 module Baba.BabaTest exposing ( Model, Msg, init, update, subscription,
                                 problemGraphEvo, gridToStr,
-                                rulesTestGridDebugStr, rulesTestResult )
+                                rulesTestGridDebugStr, rulesTestResult, testResults )
+
+import List.Extra
 
 import Baba.Baba as Baba exposing ( countChars )
 import Baba.Cell exposing (..)
@@ -13,6 +15,99 @@ import Baba.LinkedGrid as LinkedGrid
 import Random
 import Time
 
+
+tests = 
+    [ [ [ "A=M",    "A=M" ]
+      , [ " → ",    "  →" ]
+      ]
+    , [ [ "A=M ",    "A=M" ]
+      , [ " →→ ",    "  →→" ]
+      ]
+
+    , [ [ "A=M ",    "A=M" ]
+      , [ "  ←←",    " ←←" ]
+      ]
+
+    , [ [ "B=KA=M",  "B=KA=M" ]
+      , [ "b←    ",  "" ]
+      ]
+
+    , [ [ "B=LA=M",  "B=LA=M" ]
+      , [ "  ←bb",    " ←bb" ]
+      ]
+
+    , [ [ "B=PA=M",  "B=PA=M" ]
+      , [ " b←",    "b←" ]
+      ]
+
+    , [ [ "B=SA=M",  "B=SA=M" ]
+      , [ " b←",    " b →" ]
+      ]
+
+    , [ [ "BA ",    "BA " ]
+      , [ "==b",    "==b" ]
+      , [ "SM↑",    "SM " ]
+      , [ "",       "  ↓"]
+      ]
+
+    , [ [" →e  ED", "← e  ED" ]
+      , ["dC=L↓==", " C=L ==" ]
+      , ["↑ b←bSK", "cb← ↓SK" ]
+      , ["c B=P ",  "  B=b " ]
+      , ["A=M   ",  "A=M P " ]
+      ]
+
+    ]
+
+testGrids : List (List Grid)
+testGrids = 
+    let
+        makeGrids : List (List String) -> Maybe (List Grid)
+        makeGrids lists = case List.head lists of
+            Just first ->
+                case List.head first of
+                    Just firstString ->
+                        let
+                            makeGrid : List String -> Grid
+                            makeGrid = 
+                                LinkedGrid.fromLists emptyCell (String.length firstString) (List.length lists)
+                                    << stringListToCells
+                        in
+                        Just (List.map makeGrid (List.Extra.transpose lists))
+                    _ ->
+                        Nothing
+            _ ->
+                Nothing
+    in
+    List.filterMap makeGrids tests
+
+doTest : List Grid -> ( Int, List ( Int, Int ) )
+doTest grids = 
+    case grids of
+        a :: b :: _
+            -> ( 0, mismatch (Maybe.withDefault a (Baba.turn Nothing a)) b )
+
+        _
+            -> ( -1, [] )
+
+testResults = 
+    List.map
+        (\g ->
+            let
+                mismatches = Tuple.second (doTest g)
+                toStr ( x, y ) = String.fromInt x ++ ":" ++ String.fromInt y
+            in
+            case mismatches of
+                [] ->
+                    "correct!"
+
+                _ ->
+                    let
+                        dummy = Debug.log "grid" (g |> List.head |> Maybe.andThen (\grid -> Baba.turn Nothing grid) |> Maybe.map gridToStr |> Maybe.withDefault "") 
+                    in
+                    String.join ", " (List.map toStr mismatches)
+
+        ) testGrids
 
 ruleGridToOverlay = LinkedGrid.fromLists emptyCell 5 5
           (stringListToCells
@@ -113,11 +208,19 @@ init msg =
     )
 
 
-rulesTestResult =
-        let
-            ruleStrings = List.map Rules.ruleDebugString (lookForRules rulesTestGrid)
-        in 
-            String.join "\n" ruleStrings
+rulesTestResult = case testGrids of 
+    g :: [] ->
+        doTest g
+            |> Tuple.second
+            |> List.map (\( x, y ) -> String.fromInt x ++ ":" ++ String.fromInt y)
+            |> String.join ", "
+
+    _ ->
+        "no grids!"
+        --let
+        --    ruleStrings = List.map Rules.ruleDebugString (lookForRules rulesTestGrid)
+        --in 
+        --    String.join "\n" ruleStrings
 
 
 makeRandomGrid : List Char -> Grid
@@ -193,7 +296,7 @@ update msg model =
                         _ -> []
 
                     withPretendUndoStack grid =
-                        Baba.turn Nothing [grid] |> List.head
+                        Baba.turn Nothing grid
                 in
                 List.filterMap withPretendUndoStack model
 

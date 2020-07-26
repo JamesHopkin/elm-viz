@@ -141,7 +141,9 @@ tdFromString str = td [] [ pre [] [ text str ] ]
 view : Model -> Html.Html Msg
 view model =
   div []
-    [ h3 [] [ text "Baba!" ]
+    [ h3 [] [ text "Tests" ]
+    , div [] (List.map text Baba.BabaTest.testResults)
+    , h3 [] [ text "Baba!" ]
     , table [ class "table" ]
       [ tr [] 
          ( case List.head model.baba.undoStack of

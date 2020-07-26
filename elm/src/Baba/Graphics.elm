@@ -1,7 +1,7 @@
 module Baba.Graphics exposing ( Model, Msg, init, update, view, subscription,
                                 setGrid )
 
-import Basics exposing ( toFloat, round )
+import Basics exposing ( toFloat, floor, round )
 
 import Browser.Events
 import Dict
@@ -21,11 +21,12 @@ import Color
 import Baba.Cell as Cell
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction(..) )
 
-animDurationMillis = 200
+animDurationMillis = 350
 
-spritesLoader msg = loadFromImageUrl "links.png" (msg << TextureLoaded)
+spritesLoader msg = loadFromImageUrl "blah.png" (msg << TextureLoaded)
 
-spriteWidth = 30.0
+spriteWidthInt = 24
+spriteWidth = 24.0
 halfSpriteWidth = spriteWidth / 2.0
 
 makeSprite x y reflect =
@@ -35,8 +36,52 @@ makeSprite x y reflect =
 
 link                = makeSprite 0   0 False
 linkUp              = makeSprite 60  0 False
-linkSwordLeft       = makeSprite 235 0 False
+linkSwordLeft       = makeSprite 238 -1 False
 linkSwordRight      = makeSprite 235 0 True
+
+floorf = floor >> toFloat
+
+renderWip rowY =
+    let
+        frame delta = Texture.sprite
+            { x = if delta > 0.95 then 0 else spriteWidth * floorf (8 * delta)
+            , y = rowY
+            , width = spriteWidth
+            , height = 32
+            }
+
+        render delta x y alpha spriteSheet =
+            Canvas.texture
+                [ Canvas.Settings.Advanced.alpha alpha
+                , transform [translate (x + halfSpriteWidth) y]
+                ]
+                ( -halfSpriteWidth, 0 ) ((frame delta) spriteSheet)
+    in
+    render
+
+noAnimSprite x y = Texture.sprite { x = x, y = y, width = 24, height = 32 }
+
+renderNoAnimSprite spriteX spriteY x y alpha spriteSheet = Canvas.texture
+    [ Canvas.Settings.Advanced.alpha alpha
+    , transform [translate (x + halfSpriteWidth) y]
+    ]
+    ( -halfSpriteWidth, 0 ) (noAnimSprite spriteX spriteY  spriteSheet)
+
+renderRock = renderNoAnimSprite 0 128
+renderKey = renderNoAnimSprite 24 128
+
+--renderRock x y alpha spriteSheet = Canvas.texture
+--    [ Canvas.Settings.Advanced.alpha alpha
+--    , transform [translate (x + halfSpriteWidth) y]
+--    ]
+--    ( -halfSpriteWidth, 0 ) (rockSprite spriteSheet)
+
+
+renderLeft = renderWip 0
+renderRight = renderWip 32
+renderUp = renderWip 64
+renderDown = renderWip 96
+
 
 renderSprite sprite x y alpha spriteSheet =
     let
@@ -88,21 +133,27 @@ update msg model =
 
 font = Text.font { size = 24, family = "sans-serif" }
 
-renderObject spriteSheet obj animX animY alpha =
+renderObject spriteSheet obj delta animX animY alpha =
     let
-        x = animX * 32
-        y = animY * 32 + 5
+        x = animX * 20
+        y = animY * 20 + 5
     in
     case Cell.objectDebugChar obj of
         'z' -> 
             let
-                sprite = case Cell.getObjectDirection obj of
-                    Left -> linkSwordLeft
-                    Right -> linkSwordRight
-                    Up -> linkUp
-                    _ -> link
+                func = case Cell.getObjectDirection obj of
+                    Left -> renderLeft
+                    Right -> renderRight
+                    Up -> renderUp
+                    _ -> renderDown
             in
-                renderSprite sprite x y alpha spriteSheet
+            func delta x y alpha spriteSheet
+
+        'r' ->
+            renderRock x y alpha spriteSheet
+
+        'f' ->
+            renderKey x y alpha spriteSheet
 
         '=' ->
             Canvas.text [Text.font { size = 12, family = "sans-serif" }] ( x + 10, y + 20 ) "is"
@@ -116,24 +167,24 @@ renderGrid spriteSheet dicts delta grid =
         foldFunc ( objX, objY, obj ) acc =
             let
 
-                ( animX, animY ) = 
+                ( animX, animY, animDelta ) = 
                     case dicts of
                         Just ( prev, _ ) ->
                             case Dict.get (Cell.getObjectId obj) prev of
                                 Just ( prevX, prevY, _ ) ->
                                     ( toFloat prevX * (1 - delta) + toFloat objX * delta
                                     , toFloat prevY * (1 - delta) + toFloat objY * delta
+                                    , if prevX == objX && prevY == objY then 0 else delta
                                     )
 
                                 _ ->
-                                    ( toFloat objX, toFloat objY )
+                                    ( toFloat objX, toFloat objY, 0 )
 
                         _ ->
-                            ( toFloat objX, toFloat objY )
-
+                            ( toFloat objX, toFloat objY, 0 )
 
             in
-            (renderObject spriteSheet obj animX animY 1.0) :: acc
+            (renderObject spriteSheet obj animDelta animX animY 1.0) :: acc
     in
         Cell.foldObjects foldFunc [] grid
 
@@ -181,7 +232,7 @@ view msg model =
               , textures = [spritesLoader msg]
               } [] 
               ([ Canvas.shapes  
-                    [Canvas.Settings.fill (Color.rgba 0.7 0.7 0.7 1.0)]
+                    [Canvas.Settings.fill (Color.rgb (74.0 / 255.0) (156.0 / 255.0) (74.0 / 255.0))]
                     [Canvas.rect (0, 0) (toFloat canvasWidth) (toFloat canvasHeight)]
               ] ++ 
                 (case model.texture of
@@ -192,7 +243,7 @@ view msg model =
                             Just ( _, destroyed ) ->
                                 destroyed
                                     |> Dict.toList
-                                    |> List.map (\(_, ( x, y, obj )) -> renderObject texture obj (toFloat x) (toFloat y) (1.0 - delta))
+                                    |> List.map (\(_, ( x, y, obj )) -> renderObject texture obj 0 (toFloat x) (toFloat y) (1.0 - delta))
 
                             _ ->
                                 []
