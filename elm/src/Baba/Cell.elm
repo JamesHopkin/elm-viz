@@ -50,10 +50,10 @@ mismatch a b =
                     if compare (sortedDebugChars cellA) (sortedDebugChars cellB) == EQ then
                         acc 
                     else
-                        let
-                            lengthsLog = Debug.log "lengths" [List.length (sortedDebugChars cellA), List.length (sortedDebugChars cellB)]
-                            idsLog = Debug.log "chars" (sortedDebugChars cellA ++ sortedDebugChars cellB)
-                        in
+                        --let
+                        --    lengthsLog = Debug.log "lengths" [List.length (sortedDebugChars cellA), List.length (sortedDebugChars cellB)]
+                        --    idsLog = Debug.log "chars" (sortedDebugChars cellA ++ sortedDebugChars cellB)
+                        --in
                         ( x, y ) :: acc
 
                 _ ->

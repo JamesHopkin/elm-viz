@@ -102,9 +102,9 @@ testResults =
                     "correct!"
 
                 _ ->
-                    let
-                        dummy = Debug.log "grid" (g |> List.head |> Maybe.andThen (\grid -> Baba.turn Nothing grid) |> Maybe.map gridToStr |> Maybe.withDefault "") 
-                    in
+                    --let
+                    --    dummy = Debug.log "grid" (g |> List.head |> Maybe.andThen (\grid -> Baba.turn Nothing grid) |> Maybe.map gridToStr |> Maybe.withDefault "") 
+                    --in
                     String.join ", " (List.map toStr mismatches)
 
         ) testGrids

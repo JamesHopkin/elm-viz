@@ -12,9 +12,9 @@ ensure default ls maybeResult =
             result
 
         _ ->
-            let
-                dummy = Debug.log "ensure" ls
-            in
+            --let
+            --    dummy = Debug.log "ensure" ls
+            --in
             default
 
 flipCellDirection : Axis -> Axis
