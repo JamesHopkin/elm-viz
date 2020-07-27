@@ -61,7 +61,7 @@ foldDestroy f location =
     case f contents of
         Just cell ->
             let
-                newLoc = LinkedGrid.setContents location cell
+                newLoc = LinkedGrid.setContents cell location
                 --dummy = Debug.log "check contents" (LinkedGrid.getContents newLoc)
             in
                 newLoc

@@ -16,8 +16,12 @@ import Random
 import Time
 
 
-tests = 
-    [ [ [ "A=M",    "A=M" ]
+allTests = 
+    [ [ [ "B=C", "B=C" ]
+      , [ "bbb", "ccc" ]
+      ]
+
+    , [ [ "A=M",    "A=M" ]
       , [ " → ",    "  →" ]
       ]
     , [ [ "A=M ",    "A=M" ]
@@ -59,6 +63,8 @@ tests =
 
     ]
 
+tests = [Maybe.withDefault [] (List.head allTests)]
+
 testGrids : List (List Grid)
 testGrids = 
     let
@@ -85,7 +91,7 @@ doTest : List Grid -> ( Int, List ( Int, Int ) )
 doTest grids = 
     case grids of
         a :: b :: _
-            -> ( 0, mismatch (Maybe.withDefault a (Baba.turn Nothing a)) b )
+            -> ( 0, mismatch (Maybe.withDefault a (Baba.turn True Nothing a)) b )
 
         _
             -> ( -1, [] )
@@ -289,16 +295,16 @@ generator =
 update : Msg -> Model -> Model 
 update msg model =
     case msg of
-        Update _ ->
-                let
-                    --dummy = Debug.log "object counts" <| case List.head model of
-                        --Just grid -> countChars grid
-                        --_ -> []
+        Update _ -> model
+                --let
+                --    --dummy = Debug.log "object counts" <| case List.head model of
+                --        --Just grid -> countChars grid
+                --        --_ -> []
 
-                    withPretendUndoStack grid =
-                        Baba.turn Nothing grid
-                in
-                List.filterMap withPretendUndoStack model
+                --    withPretendUndoStack grid =
+                --        Baba.turn Nothing grid
+                --in
+                --List.filterMap withPretendUndoStack model
 
 
         RandomGrid chars ->

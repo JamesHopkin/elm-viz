@@ -6,16 +6,8 @@ import Baba.Cell exposing (..)
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
 import Baba.Types as Types
 
-ensure default ls maybeResult =
-    case maybeResult of
-        Just result ->
-            result
+import Baba.Util exposing ( ensure )
 
-        _ ->
-            --let
-            --    dummy = Debug.log "ensure" ls
-            --in
-            default
 
 flipCellDirection : Axis -> Axis
 flipCellDirection loc =

@@ -88,6 +88,7 @@ fromLists empty width height outer =
 
             --|> Array.map (\list -> setLength empty width (Array.fromList list))
 
+at : Int -> Int -> LinkedGrid el -> Maybe (Location el)
 at x y grid = case grid of
     LinkedGrid _ width height _ ->
         if x < 0 || x >= width || y < 0 || y >= height then
@@ -102,8 +103,8 @@ getContents loc = case loc of
             |> Maybe.andThen (Array.get x)
             |> Maybe.withDefault empty
 
-setContents : Location el -> el -> Location el
-setContents loc content = case loc of
+setContents : el -> Location el -> Location el
+setContents content loc = case loc of
     Location (LinkedGrid empty width height grid) x y ->
         let
             replacementRow = 
@@ -158,7 +159,7 @@ axisSetAt offset content axis = case axis of
     Axis (Location grid x y) direction ->
         let
             ( newX, newY ) = applyOffset ( x, y ) offset direction
-            newGrid = case setContents (Location grid newX newY) content of
+            newGrid = case setContents content (Location grid newX newY) of
                 Location g _ _ -> g
         in
         makeAxis (Location newGrid x y) direction
@@ -214,7 +215,7 @@ overlay targetGrid x y srcGrid =
                 in
                     case ( target, contents ) of
                         ( Just t, Just c ) ->
-                            setContents t c |> gridFromLocation
+                            setContents c t |> gridFromLocation
 
                         _ ->
                             grid

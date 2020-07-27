@@ -105,13 +105,14 @@ wait = turnAndUpdateGraphics Nothing
     --    |> Maybe.map Destroy.doDestroys
     --    |> Maybe.withDefault grid
 
+curry2 f ( a, b ) = f a b
 
-turn : Maybe Direction -> Cell.Grid -> Maybe Cell.Grid
-turn youDirection currentGrid =
+turn : Bool -> Maybe Direction -> Cell.Grid -> Maybe Cell.Grid
+turn forceTransform youDirection currentGrid =
     let
 
         -- rules
-        ( rules, gridWithUpToDateRules ) = applyRules currentGrid
+        ( initialRules, gridWithUpToDateRules ) = applyRules currentGrid
 
         -- you
         ( numberOfYousMoved, afterYousMoved ) =
@@ -141,20 +142,22 @@ turn youDirection currentGrid =
 
         --dummy = Debug.log "move counts" [numberOfYousMoved, numberOfOthersMoved]
 
-        transform grid =
+        transform rules grid =
             let
-                transfromRules = List.filter (\r -> Util.isJust (Rules.getTransform r)) rules
+                transformRules = List.filter (\r -> Util.isJust (Rules.getTransform r)) rules
             in
-            if List.isEmpty transfromRules then
+            if List.isEmpty transformRules then
                 grid
             else
-                Make.doTransformations transfromRules grid
-
+                Make.doTransformations transformRules grid
 
     in
-    if numberOfYousMoved + numberOfOthersMoved > 0 then
-        Destroy.doDestroys afterAllMoves
-            |> Make.doTransformations rules
+    if forceTransform || numberOfYousMoved + numberOfOthersMoved > 0 then
+        afterAllMoves
+            |> applyRules |> Tuple.second
+            |> Destroy.doDestroys 
+            |> applyRules
+            |> curry2 transform
             |> Just
     else
         Nothing
@@ -170,10 +173,11 @@ updateGraphics model =
         _ ->
             model
 
+turnAndUpdateGraphics : Maybe Direction -> Model -> Model
 turnAndUpdateGraphics maybeDirection model =
     case model.undoStack of
         currentGrid :: _ ->
-            case turn maybeDirection currentGrid of
+            case turn (List.length model.undoStack == 1) maybeDirection currentGrid of
                 Just newGrid ->
 
                     { model
@@ -245,8 +249,8 @@ initialModel =
                 [ "ZA aaaaaaaa"
                 , "== a      a"
                 , "YS a z  r a"
-                , "  Ta      a"
-                , "  =a    r a"
+                , "  Ta   R  a"
+                , "  =a A= r a"
                 , "  Ka      a"
                 , "aaaatttaaaaaaa"
                 , "a      a     a"

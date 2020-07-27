@@ -3,8 +3,8 @@ module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveT
                             firstComplement, firstSubject, firstStative, firstLinkingWord,
                             getObjectId, getObjectWord, getObjectDirection, getObjectFlags,
                             makeObject, makeDirectedObject, makeTextObject,
-                            setObjectDirection, setObjectFlags, setObjectIs, updateObjectInCell,
-                            flipDir, foldObjects,
+                            setObjectDirection, setObjectFlags, setObjectIs, setObjectWordAndFlags,
+                            updateObjectInCell, flipDir, foldObjects,
                             objectDebugChar, cellDebugString, stringListToCells, mismatch,
 
                             ObjectKind(..) ) -- may encapsulate further
@@ -140,6 +140,14 @@ setObjectFlags flags object = case object of
             | flags = flags
             }
 
+setObjectWordAndFlags word flags object = case object of
+    Object id state ->
+        Object id
+            { state
+            | word = word
+            , flags = flags
+            }
+
 setObjectIs verb object = case object of
     Object id state ->
         Object id 
@@ -164,7 +172,7 @@ updateObjectInCell updatedObject loc =
     in
         LinkedGrid.getContents loc
             |> replace
-            |> LinkedGrid.setContents loc
+            |> (\new -> LinkedGrid.setContents new loc)
 
 
 moveToCell : Int -> Int -> Int -> Maybe Direction -> Axis -> Maybe Axis

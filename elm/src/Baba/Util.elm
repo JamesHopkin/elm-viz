@@ -7,3 +7,14 @@ isJust maybe = case maybe of
 isNothing maybe = case maybe of
     Nothing -> True
     _ -> False
+
+ensure default ls maybeResult =
+    case maybeResult of
+        Just result ->
+            result
+
+        _ ->
+            let
+                dummy = Debug.log "ensure" ls
+            in
+            default
