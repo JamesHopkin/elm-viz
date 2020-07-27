@@ -51,45 +51,45 @@ applyRules grid =
 
         foldFunc : ( Int, Int, Cell.Object ) -> Cell.Grid -> Cell.Grid
         foldFunc ( x, y, object ) gridToUpdate =
-                            let
-                                applicable rule =  
-                                    case ( Cell.getObjectWord object, rule ) of 
-                                        ( Cell.Instance objectNoun, Rules.Is (Types.NounSubject noun) (Types.Stative stative) ) ->
-                                            if Types.nounsEqual noun objectNoun then
-                                                Just stative
+            let
+                applicable rule =  
+                    case ( Cell.getObjectWord object, rule ) of 
+                        ( Cell.Instance objectNoun, Rules.Is (Types.NounSubject noun) (Types.Stative stative) ) ->
+                            if Types.nounsEqual noun objectNoun then
+                                Just stative
 
-                                            else
-                                                Nothing
+                            else
+                                Nothing
 
-                                        ( Cell.Text _, Rules.Is (Types.Predicate Types.Text) (Types.Stative stative) ) ->
-                                            Just stative
+                        ( Cell.Text _, Rules.Is (Types.Predicate Types.Text) (Types.Stative stative) ) ->
+                            Just stative
 
-                                        _ ->
-                                            Nothing
+                        _ ->
+                            Nothing
 
-                                ruleFoldFunc : Rules.Rule -> Int -> Int
-                                ruleFoldFunc rule flags =
-                                    case applicable rule of
-                                        Just stative ->
-                                            Bitwise.or flags (Types.flagFor stative)
+                ruleFoldFunc : Rules.Rule -> Int -> Int
+                ruleFoldFunc rule flags =
+                    case applicable rule of
+                        Just stative ->
+                            Bitwise.or flags (Types.flagFor stative)
 
-                                        Nothing ->
-                                            flags
+                        Nothing ->
+                            flags
 
 
-                                calculatedFlags = List.foldr ruleFoldFunc 0 rules
+                calculatedFlags = List.foldr ruleFoldFunc 0 rules
 
-                            in
-                                if calculatedFlags == Cell.getObjectFlags object then
-                                    gridToUpdate
-                                else
-                                    let
-                                        updatedObject = Cell.setObjectFlags calculatedFlags object
-                                    in
-                                    LinkedGrid.at x y gridToUpdate
-                                        |> Maybe.map (Cell.updateObjectInCell updatedObject)
-                                        |> Maybe.map LinkedGrid.gridFromLocation
-                                        |> Maybe.withDefault gridToUpdate 
+            in
+                if calculatedFlags == Cell.getObjectFlags object then
+                    gridToUpdate
+                else
+                    let
+                        updatedObject = Cell.setObjectFlags calculatedFlags object
+                    in
+                    LinkedGrid.at x y gridToUpdate
+                        |> Maybe.map (Cell.updateObjectInCell updatedObject)
+                        |> Maybe.map LinkedGrid.gridFromLocation
+                        |> Maybe.withDefault gridToUpdate 
 
     in
     ( rules, Cell.foldObjects foldFunc grid grid )
@@ -264,15 +264,15 @@ initialModel =
                 [ "NA aaaaaaaa"
                 , "== a      a"
                 , "YS a n  c a"
-                , "  Ta   C  a"
+                , "  Ba   C  a"
                 , "  =a A= c a"
                 , "  Ka      a"
                 , "aaaa X aaaaaaa"
                 , "a      a     a"
                 , "a  M   a C=P a"
-                , "attt       L a"
-                , "attt   a F=W a"
-                , "aftt   a     a"
+                , "abbb       L a"
+                , "abbb   a F=W a"
+                , "afbb   a     a"
                 , "aaaaaaaaaaaaaa"
                 ]
     in

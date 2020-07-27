@@ -103,8 +103,7 @@ lookForRules grid =
         _ -> []
 
 getTransform rule = case rule of
-    Is (Types.NounSubject (Types.Noun subj))
-        (Types.NounComplement (Types.Noun obj)) ->
+    Is subj (Types.NounComplement (Types.Noun obj)) ->
         Just ( subj, obj )
 
     _ ->
