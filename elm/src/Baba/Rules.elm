@@ -98,7 +98,8 @@ lookForRules grid =
                         fold LinkedGrid.right (columnFunc >> (++)) origin []
 
             in
-                rowRules ++ columnRules
+                (Is (Types.Predicate Types.Text) (Types.Stative Types.Push)) ::
+                    rowRules ++ columnRules
         _ -> []
 
 getTransform rule = case rule of

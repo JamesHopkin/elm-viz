@@ -8,6 +8,7 @@ isNothing maybe = case maybe of
     Nothing -> True
     _ -> False
 
+ensure : a -> List b -> Maybe a -> a
 ensure default ls maybeResult =
     case maybeResult of
         Just result ->
@@ -18,3 +19,5 @@ ensure default ls maybeResult =
                 dummy = Debug.log "ensure" ls
             in
             default
+
+curry2 f ( a, b ) = f a b

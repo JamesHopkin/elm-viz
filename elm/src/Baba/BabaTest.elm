@@ -9,67 +9,96 @@ import Baba.Cell exposing (..)
 import Baba.Move exposing (..)
 import Baba.Rules as Rules exposing (..)
 import Baba.Types as Types
+import Baba.Util exposing (..)
 
-import Baba.LinkedGrid as LinkedGrid
+import Baba.LinkedGrid as LinkedGrid exposing ( Direction(..) )
 
 import Random
 import Time
 
 
 allTests = 
-    [ [ [ "B=C", "B=C" ]
-      , [ "bbb", "ccc" ]
-      ]
+        -- pull multiple
+    [ ( [ [ "B=LC=LA=M",  "B=LC=LA=M" ]
+        , [ "@@@→",       " @@@→" ]
+        ], Nothing )
 
-    , [ [ "A=M",    "A=M" ]
-      , [ " → ",    "  →" ]
-      ]
-    , [ [ "A=M ",    "A=M" ]
-      , [ " →→ ",    "  →→" ]
-      ]
+        -- open/closed
+    , ( [ [ "A=MA=UB=V", "A=MA=UB=V" ]
+        , [ "→b",        "" ]
+        ], Nothing )
 
-    , [ [ "A=M ",    "A=M" ]
-      , [ "  ←←",    " ←←" ]
-      ]
+        -- hot/melt
+    , ( [ [ "A=MA=OB=Z", "A=MA=OB=Z" ]
+        , [ "→b",        " →" ]
+        ], Nothing )
 
-    , [ [ "B=KA=M",  "B=KA=M" ]
-      , [ "b←    ",  "" ]
-      ]
+        -- melt and defeat
+    , ( [ [ "D=YA=M  ", "D=YA=M" ]
+        , [ "A=Z BC  ", "A=Z BC" ]
+        , [ " d@←==  ", "  @ ==" ]
+        , [ "  →T  O←", "   ←TO→" ]
+        ], Just Right )
 
-    , [ [ "B=LA=M",  "B=LA=M" ]
-      , [ "  ←bb",    " ←bb" ]
-      ]
+        -- weak
+    , ( [ [ "B=YC=R", "B=YC=R" ]
+        , [ "bc", " b"]
+        ], Just Right )
 
-    , [ [ "B=PA=M",  "B=PA=M" ]
-      , [ " b←",    "b←" ]
-      ]
+    , ( [ [ "B=C", "B=C" ]
+        , [ "bbb", "ccc" ]
+        ], Nothing )
 
-    , [ [ "B=SA=M",  "B=SA=M" ]
-      , [ " b←",    " b →" ]
-      ]
+    , ( [ [ "A=M",    "A=M" ]
+        , [ " → ",    "  →" ]
+        ], Nothing )
+    , ( [ [ "A=M ",    "A=M" ]
+        , [ " →→ ",    "  →→" ]
+        ], Nothing )
 
-    , [ [ "BA ",    "BA " ]
-      , [ "==b",    "==b" ]
-      , [ "SM↑",    "SM " ]
-      , [ "",       "  ↓"]
-      ]
+    , ( [ [ "A=M ",    "A=M" ]
+        , [ "  ←←",    " ←←" ]
+        ], Nothing )
 
-    , [ [" →e  ED", "← e  ED" ]
-      , ["dC=L↓==", " C=L ==" ]
-      , ["↑ b←bSK", "cb← ↓SK" ]
-      , ["c B=P ",  "  B=b " ]
-      , ["A=M   ",  "A=M P " ]
-      ]
+    , ( [ [ "B=KA=M",  "B=KA=M" ]
+        , [ "b←    ",  "" ]
+        ], Nothing )
+
+    , ( [ [ "B=LA=M",  "B=LA=M" ]
+        , [ "  ←bb",    " ←bb" ]
+        ], Nothing )
+
+    , ( [ [ "B=PA=M",  "B=PA=M" ]
+        , [ " b←",    "b←" ]
+        ], Nothing )
+
+    , ( [ [ "B=SA=M",  "B=SA=M" ]
+        , [ " b←",    " b →" ]
+        ], Nothing )
+
+    , ( [ [ "BA ",    "BA " ]
+        , [ "==b",    "==b" ]
+        , [ "SM↑",    "SM " ]
+        , [ "",       "  ↓"]
+        ], Nothing )
+
+    , ( [ [" →e  ED", "← e  ED" ]
+        , ["dC=L↓==", " C=L ==" ]
+        , ["↑ b←bSK", "cb← ↓SK" ]
+        , ["c B=PF",  "  B=bF" ]
+        , ["A=M  =",  "A=M P=" ]
+        , [" f   Y",  "  f  Y" ]
+        ], Just Right )
 
     ]
 
-tests = [Maybe.withDefault [] (List.head allTests)]
+tests = allTests -- [Maybe.withDefault [] (List.head allTests)]
 
-testGrids : List (List Grid)
+testGrids : List ( List Grid, Maybe Direction )
 testGrids = 
     let
-        makeGrids : List (List String) -> Maybe (List Grid)
-        makeGrids lists = case List.head lists of
+        makeGrids : ( List (List String), Maybe Direction ) -> Maybe ( List Grid, Maybe Direction )
+        makeGrids ( lists, direction ) = case List.head lists of
             Just first ->
                 case List.head first of
                     Just firstString ->
@@ -79,7 +108,7 @@ testGrids =
                                 LinkedGrid.fromLists emptyCell (String.length firstString) (List.length lists)
                                     << stringListToCells
                         in
-                        Just (List.map makeGrid (List.Extra.transpose lists))
+                        Just ( List.map makeGrid (List.Extra.transpose lists), direction )
                     _ ->
                         Nothing
             _ ->
@@ -87,25 +116,25 @@ testGrids =
     in
     List.filterMap makeGrids tests
 
-doTest : List Grid -> ( Int, List ( Int, Int ) )
-doTest grids = 
+doTest : List Grid -> Maybe Direction -> ( Int, List ( Int, Int ) )
+doTest grids direction = 
     case grids of
         a :: b :: _
-            -> ( 0, mismatch (Maybe.withDefault a (Baba.turn True Nothing a)) b )
+            -> ( 0, mismatch (Maybe.withDefault a (Baba.turn True direction a)) b )
 
         _
             -> ( -1, [] )
 
 testResults = 
     List.map
-        (\g ->
+        (\tup ->
             let
-                mismatches = Tuple.second (doTest g)
+                mismatches = Tuple.second (curry2 doTest tup)
                 toStr ( x, y ) = String.fromInt x ++ ":" ++ String.fromInt y
             in
             case mismatches of
                 [] ->
-                    "correct!"
+                    "✓"
 
                 _ ->
                     --let
@@ -216,7 +245,7 @@ init msg =
 
 rulesTestResult = case testGrids of 
     g :: [] ->
-        doTest g
+        curry2 doTest g
             |> Tuple.second
             |> List.map (\( x, y ) -> String.fromInt x ++ ":" ++ String.fromInt y)
             |> String.join ", "

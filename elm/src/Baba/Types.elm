@@ -38,10 +38,12 @@ linkingWordDebugString linkingWord = case linkingWord of
 type Predicate
     = All
     | Empty
+    | Text
 
 predicateDebugString predicate = case predicate of
     All -> "all"
     Empty -> "empty"
+    Text -> "text"
 
 -- verb also doesn't apply to all, but it's close
 type Stative

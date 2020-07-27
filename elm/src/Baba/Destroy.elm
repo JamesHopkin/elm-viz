@@ -24,6 +24,10 @@ mutualDestructionMask = Types.flagsFor
 
 allDestructionMask = Bitwise.or unilateralDestructionMask mutualDestructionMask
 
+or_ f g x = f x || g x 
+and_ f g x = f x && g x 
+not_ f x = not (f x)
+
 doMutualDestroys : Cell -> Maybe Cell
 doMutualDestroys cell = 
     let
@@ -31,26 +35,37 @@ doMutualDestroys cell =
         sinkObjects = List.filter (Cell.objectIs Types.Sink) cell
         numSinkObjects = List.length sinkObjects
     in
-    if numSinkObjects == 0 || numSinkObjects == List.length cell then
-        Nothing
-    else
+    if numSinkObjects > 0 && numSinkObjects < List.length cell then
         Just []
 
+    else
+        -- open/closed
+        if and_ (Cell.cellHas Types.Open) (Cell.cellHas Types.Closed) cell then
+            List.filter (\obj -> not (Cell.objectIsAny [Types.Open, Types.Closed] obj)) cell
+                |> Just
+
+        else
+            Nothing
+
+
+
 doUnilateralDestroys : Cell -> Maybe Cell
-doUnilateralDestroys cell = 
+doUnilateralDestroys cell =
+    -- idea: build a list of statives to filter out
     let
+        filterOut =
+            (if List.length cell > 1 then [Types.Weak] else [])
+         ++ (if Cell.cellHas Types.Hot cell then [Types.Melt] else [])
+         ++ (if Cell.cellHas Types.Defeat cell then [Types.You] else [])
 
---destroy and you?
-    --    -- sink!
-    --    sinkObjects = List.filter (Cell.objectIs Types.Sink) cell
-    --    numSinkObjects = List.length sinkObjects
-    --in
-    --if numSinkObjects == 0 || numSinkObjects == List.length cell then
-    --    Nothing
-
-
-        dummy = 0 --Debug.log "unilateral" []
+        filter = not_ (Cell.objectIsAny filterOut)
+        filtered = List.filter filter cell
     in
+    -- hot/melt
+    if List.length filtered /= List.length cell then
+        Just filtered
+
+    else
         Nothing
 
 foldDestroy : (Cell -> Maybe Cell) -> Location -> Location

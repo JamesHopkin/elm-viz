@@ -25,6 +25,9 @@ animDurationMillis = 350
 
 spritesLoader msg = loadFromImageUrl "images/blah.png" (msg << TextureLoaded)
 
+cellDimensionInt = 20
+cellDimension = toFloat cellDimensionInt
+
 spriteWidthInt = 24
 spriteWidth = 24.0
 halfSpriteWidth = spriteWidth / 2.0
@@ -34,12 +37,12 @@ makeSprite x y reflect =
     , reflect = reflect
     }
 
-link                = makeSprite 0   0 False
-linkUp              = makeSprite 60  0 False
-linkSwordLeft       = makeSprite 238 -1 False
-linkSwordRight      = makeSprite 235 0 True
 
 floorf = floor >> toFloat
+
+-- probably pass this through to all render functions
+gt = transform [scale 2.0 2.0]
+
 
 renderWip rowY =
     let
@@ -52,7 +55,7 @@ renderWip rowY =
 
         render delta x y alpha spriteSheet =
             Canvas.texture
-                [ Canvas.Settings.Advanced.alpha alpha
+                [ gt, Canvas.Settings.Advanced.alpha alpha
                 , transform [translate (x + halfSpriteWidth) y]
                 ]
                 ( -halfSpriteWidth, 0 ) ((frame delta) spriteSheet)
@@ -62,7 +65,7 @@ renderWip rowY =
 noAnimSprite x y = Texture.sprite { x = x, y = y, width = 24, height = 32 }
 
 renderNoAnimSprite spriteX spriteY x y alpha spriteSheet = Canvas.texture
-    [ Canvas.Settings.Advanced.alpha alpha
+    [ gt, Canvas.Settings.Advanced.alpha alpha
     , transform [translate (x + halfSpriteWidth) y]
     ]
     ( -halfSpriteWidth, 0 ) (noAnimSprite spriteX spriteY  spriteSheet)
@@ -135,11 +138,11 @@ font = Text.font { size = 24, family = "sans-serif" }
 
 renderObject spriteSheet obj delta animX animY alpha =
     let
-        x = animX * 20
-        y = animY * 20 + 5
+        x = animX * cellDimension
+        y = animY * cellDimension + 5
     in
     case Cell.objectDebugChar obj of
-        'z' -> 
+        'n' -> 
             let
                 func = case Cell.getObjectDirection obj of
                     Left -> renderLeft
@@ -149,17 +152,17 @@ renderObject spriteSheet obj delta animX animY alpha =
             in
             func delta x y alpha spriteSheet
 
-        'r' ->
+        'c' ->
             renderRock x y alpha spriteSheet
 
         'f' ->
             renderKey x y alpha spriteSheet
 
         '=' ->
-            Canvas.text [Text.font { size = 12, family = "sans-serif" }] ( x + 10, y + 20 ) "is"
+            Canvas.text [gt, Text.font { size = 12, family = "sans-serif" }] ( x + 10, y + 20 ) "is"
 
         c ->
-            Canvas.text [font] ( x + 5, y + 24 ) (String.fromChar c)
+            Canvas.text [gt, font] ( x + 5, y + 24 ) (String.fromChar c)
 
 renderGrid spriteSheet dicts delta grid =
     let
@@ -204,8 +207,8 @@ view msg model =
         Just grid -> 
             let
                 ( gridWidth, gridHeight ) = LinkedGrid.getDimensions grid
-                canvasWidth = gridWidth * 32
-                canvasHeight = gridHeight * 32
+                canvasWidth = (gridWidth + 1) * cellDimensionInt * 2
+                canvasHeight = (gridHeight + 1) * cellDimensionInt * 2
 
                 delta = toFloat (millisBetween model.lastUpdateTime model.lastAnimTime)
                             / toFloat animDurationMillis

@@ -50,10 +50,10 @@ mismatch a b =
                     if compare (sortedDebugChars cellA) (sortedDebugChars cellB) == EQ then
                         acc 
                     else
-                        --let
-                        --    lengthsLog = Debug.log "lengths" [List.length (sortedDebugChars cellA), List.length (sortedDebugChars cellB)]
-                        --    idsLog = Debug.log "chars" (sortedDebugChars cellA ++ sortedDebugChars cellB)
-                        --in
+                        let
+                            lengthsLog = Debug.log "lengths" [List.length (sortedDebugChars cellA), List.length (sortedDebugChars cellB)]
+                            idsLog = Debug.log "chars" (sortedDebugChars cellA ++ sortedDebugChars cellB)
+                        in
                         ( x, y ) :: acc
 
                 _ ->
@@ -175,34 +175,40 @@ updateObjectInCell updatedObject loc =
             |> (\new -> LinkedGrid.setContents new loc)
 
 
-moveToCell : Int -> Int -> Int -> Maybe Direction -> Axis -> Maybe Axis
-moveToCell id from to maybeDirection axis =
+moveToCell : List Int -> Int -> Int -> Maybe Direction -> Axis -> Maybe Axis
+moveToCell ids from to maybeDirection axis =
     let
         fromContent = LinkedGrid.axisGetAt from axis
 
+        shouldMoveFrom obj = List.member (getObjectId obj) ids
+
         --dummy0 = Debug.log "move from content" fromContent
-        maybeObj = List.Extra.find (getObjectId >> (==) id) fromContent
+        toMove = List.filter shouldMoveFrom fromContent
         --dummy = Debug.log "move ids" [id, from, to, if isJust maybeObj then 1 else 0]
 
     
-        result = case maybeObj of
-                Just obj -> 
-                    let
-                        objToAdd = case maybeDirection of
-                            Just newDirection -> setObjectDirection newDirection obj
-                            _ -> obj
+        result = 
+            if List.isEmpty toMove then
+                Nothing
 
-                        newFromContent = List.filter (getObjectId >> ((/=) id)) fromContent
-                        newToContent = objToAdd :: LinkedGrid.axisGetAt to axis
-                    in
-                        Just
-                            ( axis
-    -- could optimise to not replace grid twice
-                                |> LinkedGrid.axisSetAt from newFromContent
-                                |> LinkedGrid.axisSetAt to newToContent
-                            )
+            else
+                let
+                    movedItems = case maybeDirection of
+                        Just newDirection ->
+                            List.map (setObjectDirection newDirection) toMove
 
-                _ -> Nothing
+                        _ ->
+                            toMove
+
+                    newFromContent = List.filter (not << shouldMoveFrom) fromContent
+                    newToContent = movedItems ++ LinkedGrid.axisGetAt to axis
+                in
+                    Just
+                        ( axis
+-- could optimise to not replace grid twice
+                            |> LinkedGrid.axisSetAt from newFromContent
+                            |> LinkedGrid.axisSetAt to newToContent
+                        )
 
         --dummy3 = Debug.log "move (after)"
         --  ( case result of 
@@ -318,11 +324,16 @@ objectDebugChar object =
                 Types.Pull -> 'L'
                 Types.Move -> 'M'
                 Types.Stop -> 'S'
+                Types.Hot -> 'O'
                 Types.Push -> 'P'
+                Types.Open -> 'U'
+                Types.Closed -> 'V'
                 Types.Win -> 'W'
                 Types.You -> 'Y'
+                Types.Melt -> 'Z'
                 _ -> '£'
 
+        Text (Types.PredicateText Types.Text) -> 'X'
         Text (Types.LinkingWord Types.Is) -> '='
         Text (Types.LinkingWord Types.Has) -> '<'
         _ -> '@'
@@ -369,15 +380,29 @@ stringListToCells rows =
             if c == ' ' then
                 ( index, [] :: outRow )
 
+            -- multi object test
+            else if c == '@' then
+                ( index + 1, 
+                    [ makeObject index 'b'
+                    , makeObject (index + 100000) 'c'
+                    ] :: outRow
+                )
+
+            else if c == '£' then
+                ( index + 1, 
+                    [ makeObject index 'a'
+                    , makeObject (index + 100000) 'b'
+                    , makeObject (index + 200000) 'c'
+                    ] :: outRow
+                )
+
             else
                 let newObject = case c of
                         '<' ->
                             makeTextObject index (Types.LinkingWord <| Types.Has)
-                                |> setObjectIs Types.Push
 
                         '=' ->
                             makeTextObject index (Types.LinkingWord <| Types.Is)
-                                |> setObjectIs Types.Push
 
                         '↑' ->
                             makeDirectedObject index 'a' Up
@@ -404,11 +429,26 @@ stringListToCells rows =
                                             'M' ->
                                                 Types.StativeText Types.Move
 
+                                            'O' ->
+                                                Types.StativeText Types.Hot
+
                                             'P' ->
                                                 Types.StativeText Types.Push
 
+                                            'R' ->
+                                                Types.StativeText Types.Weak
+
                                             'S' ->
                                                 Types.StativeText Types.Stop
+
+                                            'T' ->
+                                                Types.StativeText Types.Defeat
+
+                                            'U' ->
+                                                Types.StativeText Types.Open
+
+                                            'V' ->
+                                                Types.StativeText Types.Closed
 
                                             'W' ->
                                                 Types.StativeText Types.Win
@@ -416,10 +456,16 @@ stringListToCells rows =
                                             'Y' ->
                                                 Types.StativeText Types.You
 
+                                            'X' ->
+                                                Types.PredicateText Types.Text
+
+                                            'Z' ->
+                                                Types.StativeText Types.Melt
+
                                             _ ->
                                                 Types.NounText (Types.Noun (Char.toLower c))
                                 in
-                                setObjectIs Types.Push (makeTextObject index text)
+                                makeTextObject index text
                             else
                                 makeObject index c
                 in

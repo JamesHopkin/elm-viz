@@ -18,7 +18,7 @@ import Baba.Move as Move
 import Baba.Rules as Rules
 import Baba.Types as Types
 
-import Baba.Util as Util
+import Baba.Util exposing (..)
 
 {- little bit of thought needed for moving multiple
     some cases:
@@ -51,21 +51,33 @@ applyRules grid =
 
         foldFunc : ( Int, Int, Cell.Object ) -> Cell.Grid -> Cell.Grid
         foldFunc ( x, y, object ) gridToUpdate =
-            -- just doing statives
-                    case Cell.getObjectWord object of 
-                        Cell.Instance objectNoun ->
                             let
+                                applicable rule =  
+                                    case ( Cell.getObjectWord object, rule ) of 
+                                        ( Cell.Instance objectNoun, Rules.Is (Types.NounSubject noun) (Types.Stative stative) ) ->
+                                            if Types.nounsEqual noun objectNoun then
+                                                Just stative
+
+                                            else
+                                                Nothing
+
+                                        ( Cell.Text _, Rules.Is (Types.Predicate Types.Text) (Types.Stative stative) ) ->
+                                            Just stative
+
+                                        _ ->
+                                            Nothing
+
                                 ruleFoldFunc : Rules.Rule -> Int -> Int
                                 ruleFoldFunc rule flags =
-                                    case rule of
-                                        Rules.Is (Types.NounSubject noun) (Types.Stative stative) ->
-                                            if Types.nounsEqual noun objectNoun then
-                                                Bitwise.or flags (Types.flagFor stative)
-                                            else
-                                                flags
-                                        _ -> flags
+                                    case applicable rule of
+                                        Just stative ->
+                                            Bitwise.or flags (Types.flagFor stative)
 
-                                calculatedFlags = List.foldr ruleFoldFunc 0 rules 
+                                        Nothing ->
+                                            flags
+
+
+                                calculatedFlags = List.foldr ruleFoldFunc 0 rules
 
                             in
                                 if calculatedFlags == Cell.getObjectFlags object then
@@ -78,7 +90,6 @@ applyRules grid =
                                         |> Maybe.map (Cell.updateObjectInCell updatedObject)
                                         |> Maybe.map LinkedGrid.gridFromLocation
                                         |> Maybe.withDefault gridToUpdate 
-                        _ -> gridToUpdate
 
     in
     ( rules, Cell.foldObjects foldFunc grid grid )
@@ -104,8 +115,6 @@ wait = turnAndUpdateGraphics Nothing
     --    |> Move.doMovesAndPushes shouldMove True
     --    |> Maybe.map Destroy.doDestroys
     --    |> Maybe.withDefault grid
-
-curry2 f ( a, b ) = f a b
 
 turn : Bool -> Maybe Direction -> Cell.Grid -> Maybe Cell.Grid
 turn forceTransform youDirection currentGrid =
@@ -144,7 +153,7 @@ turn forceTransform youDirection currentGrid =
 
         transform rules grid =
             let
-                transformRules = List.filter (\r -> Util.isJust (Rules.getTransform r)) rules
+                transformRules = List.filter (\r -> isJust (Rules.getTransform r)) rules
             in
             if List.isEmpty transformRules then
                 grid
@@ -246,15 +255,21 @@ initialModel =
 
         grid = LinkedGrid.fromLists Cell.emptyCell 14 14
             <| Cell.stringListToCells
-                [ "ZA aaaaaaaa"
+                  --[ " →e  ED"
+                  --, "dC=L↓=="
+                  --, "↑ b←bSK"
+                  --, "c B=P " 
+                  --, "A=M   " 
+
+                [ "NA aaaaaaaa"
                 , "== a      a"
-                , "YS a z  r a"
-                , "  Ta   R  a"
-                , "  =a A= r a"
+                , "YS a n  c a"
+                , "  Ta   C  a"
+                , "  =a A= c a"
                 , "  Ka      a"
-                , "aaaatttaaaaaaa"
+                , "aaaa X aaaaaaa"
                 , "a      a     a"
-                , "a      a R=P a"
+                , "a  M   a C=P a"
                 , "attt       L a"
                 , "attt   a F=W a"
                 , "aftt   a     a"
