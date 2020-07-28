@@ -141,10 +141,9 @@ tdFromString str = td [] [ pre [] [ text str ] ]
 view : Model -> Html.Html Msg
 view model =
   div []
-    [ div [] (List.map text Baba.BabaTest.testResults)
-
+    [ Baba.Graphics.view (Baba.Baba.GraphicsMsg >> BabaMsg) model.baba.graphics
     , pre [] [ text model.baba.debugStr ]
-    , Baba.Graphics.view (Baba.Baba.GraphicsMsg >> BabaMsg) model.baba.graphics
+    , div [] (List.map text Baba.BabaTest.testResults)
     ]
 
 main : Program Flags Model Msg

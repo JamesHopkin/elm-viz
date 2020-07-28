@@ -72,28 +72,38 @@ renderNoAnimSprite s scl x y alpha spriteSheet = Canvas.texture
     ]
     ( -s.width / 2.0, -s.height / 2.0 ) ((Texture.sprite s) spriteSheet)
 
-renderRock = renderNoAnimSprite { x = 0, y = 128, width = 24, height = 32 } 1.0
-renderKey = renderNoAnimSprite { x = 24, y = 128, width = 24, height = 32 } 1.0
-renderShrub = renderNoAnimSprite { x = 48, y = 128, width = 24, height = 32 } 1.0
-renderWater = renderNoAnimSprite { x = 72, y = 128, width = 24, height = 32 } 1.0
-renderFence = renderNoAnimSprite { x = 96, y = 128, width = 24, height = 32 } 1.0
+instanceSprites = Dict.fromList
+    [ ( 'a',    { x = 96, y = 128, width = 24, height = 32 } ) -- fence
+    , ( 'b',    { x = 72, y = 128, width = 24, height = 32 } ) -- water
+    , ( 'c',    { x = 0, y = 128, width = 24, height = 32 } ) -- rock
+    , ( 'd',    { x = 48, y = 128, width = 24, height = 32 } ) -- shrub
+    , ( 'f',    { x = 24, y = 128, width = 24, height = 32 } ) -- key
+    ]
 
-renderIs = renderNoAnimSprite { x = 0, y = 208, width = 12, height = 16 } 0.6
+textSprites = Dict.fromList
+    [ ( 'A',    { bg = 0, sprite = { x = 144, y = 208, width = 35, height = 16 } } ) -- fence
+    , ( 'B',    { bg = 1, sprite = { x = 0, y = 224, width = 36, height = 16 } } ) -- water
+    , ( 'C',    { bg = 0, sprite = { x = 72, y = 224, width = 29, height = 16 } } ) -- rock
+    , ( 'D',    { bg = 1, sprite = { x = 16, y = 208, width = 36, height = 16 } } ) -- shrub
+    , ( 'F',    { bg = 0, sprite = { x = 136, y = 224, width = 23, height = 16 } } ) -- key
+    , ( 'N',    { bg = 1, sprite = { x = 88, y = 208, width = 26, height = 16 } } ) -- link
+    , ( 'X',    { bg = 0, sprite = { x = 104, y = 224, width = 30, height = 16 } } ) -- text
+    , ( '=',    { bg = 1, sprite = { x = 0, y = 208, width = 12, height = 16 } } ) -- is
+
+    , ( 'K',    { bg = 2, sprite = { x = 40, y = 224, width = 26, height = 16 } } ) -- sink
+    , ( 'L',    { bg = 2, sprite = { x = 184, y = 224, width = 23, height = 16 } } ) -- pull
+    , ( 'M',    { bg = 2, sprite = { x = 208, y = 224, width = 31, height = 16 } } ) -- move
+    , ( 'P',    { bg = 2, sprite = { x = 56, y = 208, width = 29, height = 16 } } ) -- push
+    , ( 'S',    { bg = 2, sprite = { x = 184, y = 208, width = 29, height = 16 } } ) -- stop
+    , ( 'W',    { bg = 2, sprite = { x = 160, y = 224, width = 20, height = 16 } } ) -- win
+    , ( 'Y',    { bg = 2, sprite = { x = 120, y = 208, width = 23, height = 16 } } ) -- you
+    ]
 
 renderTextBG = renderNoAnimSprite { x = 40, y = 160, width = 18, height = 14 } 1.0
 renderTextBG2 = renderNoAnimSprite { x = 86, y = 160, width = 18, height = 14 } 1.0
 
 
 renderMessageBox = renderNoAnimSprite { x = 0, y = 160, width = 40, height = 32 } 0.5
-
-renderShrubText = renderNoAnimSprite { x = 16, y = 208, width = 36, height = 16 } 0.6
-renderPushText = renderNoAnimSprite { x = 56, y = 208, width = 29, height = 16 } 0.6
-
---renderRock x y alpha spriteSheet = Canvas.texture
---    [ Canvas.Settings.Advanced.alpha alpha
---    , transform [translate (x + halfSpriteWidth) y]
---    ]
---    ( -halfSpriteWidth, 0 ) (rockSprite spriteSheet)
 
 
 renderLeft = renderWip 0
@@ -146,9 +156,10 @@ renderObject spriteSheet obj delta animX animY alpha =
     let
         x = animX * cellDimension
         y = animY * cellDimension + 5
+
+        objChar = Cell.objectDebugChar obj
     in
-    case Cell.objectDebugChar obj of
-        'n' -> 
+        if objChar == 'n' then
             let
                 func = case Cell.getObjectDirection obj of
                     Left -> renderLeft
@@ -158,33 +169,25 @@ renderObject spriteSheet obj delta animX animY alpha =
             in
             [func delta x y alpha spriteSheet]
 
-        'a' ->
-            [renderFence x y alpha spriteSheet]
+        else
+            case Dict.get objChar instanceSprites of
+                Just instanceSprite ->
+                    [renderNoAnimSprite instanceSprite 1.0 x y alpha spriteSheet]
 
-        'b' ->
-            [renderWater x y alpha spriteSheet]
+                _ ->
+                    case Dict.get objChar textSprites of
+                        Just { bg, sprite } ->
+                            [ (case bg of
+                                0 -> renderTextBG
+                                1 -> renderTextBG2
+                                _ -> renderMessageBox
+                              ) x y alpha spriteSheet
+                            , renderNoAnimSprite sprite 0.6 x y alpha spriteSheet
+                            ]
 
-        'c' ->
-            [renderRock x y alpha spriteSheet]
+                        _ ->
+                            [Canvas.text [gt, font] ( x - 8, y + 8 ) (String.fromChar objChar)]
 
-        'd' ->
-            [renderShrub x y alpha spriteSheet]
-
-        'f' ->
-            [renderKey x y alpha spriteSheet]
-
-        'D' ->
-            [renderTextBG2 x y alpha spriteSheet, renderShrubText x y alpha spriteSheet]
-
-        '=' ->
-            [renderTextBG x y alpha spriteSheet, renderIs x y alpha spriteSheet]
-
-        'P' ->
-            [renderMessageBox x y alpha spriteSheet, renderPushText x y alpha spriteSheet]
-            --Canvas.text [gt, Text.font { size = 12, family = "sans-serif" }] ( x + 10, y + 20 ) "is"
-
-        c ->
-            [Canvas.text [gt, font] ( x - 8, y + 8 ) (String.fromChar c)]
 
 renderGrid spriteSheet dicts delta grid =
     let
