@@ -41,7 +41,7 @@ makeSprite x y reflect =
 floorf = floor >> toFloat
 
 -- probably pass this through to all render functions
-gt = transform [scale 2.0 2.0]
+gt = transform [scale 2.0 2.0, translate (cellDimension/2.0) (cellDimension/2.0)]
 
 
 renderWip rowY =
@@ -56,22 +56,38 @@ renderWip rowY =
         render delta x y alpha spriteSheet =
             Canvas.texture
                 [ gt, Canvas.Settings.Advanced.alpha alpha
-                , transform [translate (x + halfSpriteWidth) y]
+                , transform [translate x y]
                 ]
-                ( -halfSpriteWidth, 0 ) ((frame delta) spriteSheet)
+                ( -halfSpriteWidth, -16 ) ((frame delta) spriteSheet)
     in
     render
 
 noAnimSprite x y = Texture.sprite { x = x, y = y, width = 24, height = 32 }
 
-renderNoAnimSprite spriteX spriteY x y alpha spriteSheet = Canvas.texture
-    [ gt, Canvas.Settings.Advanced.alpha alpha
-    , transform [translate (x + halfSpriteWidth) y]
+renderNoAnimSprite s scl x y alpha spriteSheet = Canvas.texture
+    [gt, Canvas.Settings.Advanced.alpha alpha
+    , transform ([translate x y] ++ (if scl == 1.0 then 
+        []
+      else [scale scl scl]))
     ]
-    ( -halfSpriteWidth, 0 ) (noAnimSprite spriteX spriteY  spriteSheet)
+    ( -s.width / 2.0, -s.height / 2.0 ) ((Texture.sprite s) spriteSheet)
 
-renderRock = renderNoAnimSprite 0 128
-renderKey = renderNoAnimSprite 24 128
+renderRock = renderNoAnimSprite { x = 0, y = 128, width = 24, height = 32 } 1.0
+renderKey = renderNoAnimSprite { x = 24, y = 128, width = 24, height = 32 } 1.0
+renderShrub = renderNoAnimSprite { x = 48, y = 128, width = 24, height = 32 } 1.0
+renderWater = renderNoAnimSprite { x = 72, y = 128, width = 24, height = 32 } 1.0
+renderFence = renderNoAnimSprite { x = 96, y = 128, width = 24, height = 32 } 1.0
+
+renderIs = renderNoAnimSprite { x = 0, y = 208, width = 12, height = 16 } 0.6
+
+renderTextBG = renderNoAnimSprite { x = 40, y = 160, width = 18, height = 14 } 1.0
+renderTextBG2 = renderNoAnimSprite { x = 86, y = 160, width = 18, height = 14 } 1.0
+
+
+renderMessageBox = renderNoAnimSprite { x = 0, y = 160, width = 40, height = 32 } 0.5
+
+renderShrubText = renderNoAnimSprite { x = 16, y = 208, width = 36, height = 16 } 0.6
+renderPushText = renderNoAnimSprite { x = 56, y = 208, width = 29, height = 16 } 0.6
 
 --renderRock x y alpha spriteSheet = Canvas.texture
 --    [ Canvas.Settings.Advanced.alpha alpha
@@ -85,16 +101,6 @@ renderRight = renderWip 32
 renderUp = renderWip 64
 renderDown = renderWip 96
 
-
-renderSprite sprite x y alpha spriteSheet =
-    let
-        reflectScale = scale (if sprite.reflect then -1 else 1) 1
-    in
-    Canvas.texture
-        [ Canvas.Settings.Advanced.alpha alpha
-        , transform [translate (x + halfSpriteWidth) (y + 1), reflectScale]
-        ]
-        (-halfSpriteWidth, 0) (sprite.sprite spriteSheet)
 
 setGrid grid model =
     { model
@@ -150,19 +156,35 @@ renderObject spriteSheet obj delta animX animY alpha =
                     Up -> renderUp
                     _ -> renderDown
             in
-            func delta x y alpha spriteSheet
+            [func delta x y alpha spriteSheet]
+
+        'a' ->
+            [renderFence x y alpha spriteSheet]
+
+        'b' ->
+            [renderWater x y alpha spriteSheet]
 
         'c' ->
-            renderRock x y alpha spriteSheet
+            [renderRock x y alpha spriteSheet]
+
+        'd' ->
+            [renderShrub x y alpha spriteSheet]
 
         'f' ->
-            renderKey x y alpha spriteSheet
+            [renderKey x y alpha spriteSheet]
+
+        'D' ->
+            [renderTextBG2 x y alpha spriteSheet, renderShrubText x y alpha spriteSheet]
 
         '=' ->
-            Canvas.text [gt, Text.font { size = 12, family = "sans-serif" }] ( x + 10, y + 20 ) "is"
+            [renderTextBG x y alpha spriteSheet, renderIs x y alpha spriteSheet]
+
+        'P' ->
+            [renderMessageBox x y alpha spriteSheet, renderPushText x y alpha spriteSheet]
+            --Canvas.text [gt, Text.font { size = 12, family = "sans-serif" }] ( x + 10, y + 20 ) "is"
 
         c ->
-            Canvas.text [gt, font] ( x + 5, y + 24 ) (String.fromChar c)
+            [Canvas.text [gt, font] ( x - 8, y + 8 ) (String.fromChar c)]
 
 renderGrid spriteSheet dicts delta grid =
     let
@@ -187,7 +209,16 @@ renderGrid spriteSheet dicts delta grid =
                             ( toFloat objX, toFloat objY, 0 )
 
             in
-            (renderObject spriteSheet obj animDelta animX animY 1.0) :: acc
+            (renderObject spriteSheet obj animDelta animX animY 1.0) ++ acc
+
+        --scl = 0.5 * (1 - delta) + 1.5 * delta
+        --messageTest = Canvas.texture
+        --    [ gt
+        --    , transform [translate 100 100, scale scl scl]
+        --    ]
+        --    ( -40 / 2.0, -32 / 2.0 ) 
+        --    ((Texture.sprite { x = 0, y = 160, width = 40, height = 32 }) spriteSheet)
+
     in
         Cell.foldObjects foldFunc [] grid
 
@@ -246,11 +277,12 @@ view msg model =
                             Just ( _, destroyed ) ->
                                 destroyed
                                     |> Dict.toList
-                                    |> List.map (\(_, ( x, y, obj )) -> renderObject texture obj 0 (toFloat x) (toFloat y) (1.0 - delta))
+                                    |> List.concatMap (\(_, ( x, y, obj )) -> renderObject texture obj 0 (toFloat x) (toFloat y) (1.0 - delta))
 
                             _ ->
                                 []
                         )
+
 
 
                     _ -> []
