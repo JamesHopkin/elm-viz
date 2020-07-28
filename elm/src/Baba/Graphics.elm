@@ -41,7 +41,7 @@ makeSprite x y reflect =
 floorf = floor >> toFloat
 
 -- probably pass this through to all render functions
-gt = transform [scale 2.0 2.0, translate (cellDimension/2.0) (cellDimension/2.0)]
+gt = transform [scale 2.0 2.0, translate cellDimension (cellDimension/2.0)]
 
 
 renderWip rowY =
@@ -81,22 +81,22 @@ instanceSprites = Dict.fromList
     ]
 
 textSprites = Dict.fromList
-    [ ( 'A',    { bg = 0, sprite = { x = 144, y = 208, width = 35, height = 16 } } ) -- fence
-    , ( 'B',    { bg = 1, sprite = { x = 0, y = 224, width = 36, height = 16 } } ) -- water
-    , ( 'C',    { bg = 0, sprite = { x = 72, y = 224, width = 29, height = 16 } } ) -- rock
-    , ( 'D',    { bg = 1, sprite = { x = 16, y = 208, width = 36, height = 16 } } ) -- shrub
-    , ( 'F',    { bg = 0, sprite = { x = 136, y = 224, width = 23, height = 16 } } ) -- key
-    , ( 'N',    { bg = 1, sprite = { x = 88, y = 208, width = 26, height = 16 } } ) -- link
-    , ( 'X',    { bg = 0, sprite = { x = 104, y = 224, width = 30, height = 16 } } ) -- text
-    , ( '=',    { bg = 1, sprite = { x = 0, y = 208, width = 12, height = 16 } } ) -- is
+    [ ( 'A',    { bg = 0, sprite = { x = 144, y = 208, width = 31, height = 16 } } ) -- fence
+    , ( 'B',    { bg = 1, sprite = { x = 0, y = 224, width = 32, height = 16 } } ) -- water
+    , ( 'C',    { bg = 0, sprite = { x = 72, y = 224, width = 26, height = 16 } } ) -- rock
+    , ( 'D',    { bg = 1, sprite = { x = 16, y = 208, width = 32, height = 16 } } ) -- shrub
+    , ( 'F',    { bg = 0, sprite = { x = 136, y = 224, width = 21, height = 16 } } ) -- key
+    , ( 'N',    { bg = 1, sprite = { x = 88, y = 208, width = 23, height = 16 } } ) -- link
+    , ( 'X',    { bg = 0, sprite = { x = 104, y = 224, width = 27, height = 16 } } ) -- text
+    , ( '=',    { bg = 1, sprite = { x = 0, y = 208, width = 11, height = 16 } } ) -- is
 
-    , ( 'K',    { bg = 2, sprite = { x = 40, y = 224, width = 26, height = 16 } } ) -- sink
-    , ( 'L',    { bg = 2, sprite = { x = 184, y = 224, width = 23, height = 16 } } ) -- pull
-    , ( 'M',    { bg = 2, sprite = { x = 208, y = 224, width = 31, height = 16 } } ) -- move
-    , ( 'P',    { bg = 2, sprite = { x = 56, y = 208, width = 29, height = 16 } } ) -- push
-    , ( 'S',    { bg = 2, sprite = { x = 184, y = 208, width = 29, height = 16 } } ) -- stop
-    , ( 'W',    { bg = 2, sprite = { x = 160, y = 224, width = 20, height = 16 } } ) -- win
-    , ( 'Y',    { bg = 2, sprite = { x = 120, y = 208, width = 23, height = 16 } } ) -- you
+    , ( 'K',    { bg = 2, sprite = { x = 40, y = 224, width = 23, height = 16 } } ) -- sink
+    , ( 'L',    { bg = 2, sprite = { x = 184, y = 224, width = 20, height = 16 } } ) -- pull
+    , ( 'M',    { bg = 2, sprite = { x = 208, y = 224, width = 28, height = 16 } } ) -- move
+    , ( 'P',    { bg = 2, sprite = { x = 56, y = 208, width = 26, height = 16 } } ) -- push
+    , ( 'S',    { bg = 2, sprite = { x = 184, y = 208, width = 26, height = 16 } } ) -- stop
+    , ( 'W',    { bg = 2, sprite = { x = 160, y = 224, width = 18, height = 16 } } ) -- win
+    , ( 'Y',    { bg = 2, sprite = { x = 120, y = 208, width = 21, height = 16 } } ) -- you
     ]
 
 renderTextBG = renderNoAnimSprite { x = 40, y = 160, width = 18, height = 14 } 1.0
