@@ -1,5 +1,5 @@
 module Baba.Baba exposing ( Model, Msg(..), init, update, subscription,
-                            turn, wait, countChars)
+                            turn, wait, countChars, replaceGrid )
 -- remember to remove exposure of Msg constructors!
 
 import Bitwise
@@ -250,31 +250,38 @@ type alias Model =
     , graphics : Graphics.Model
     }
 
-initialModel = 
-    let
+initialGridStr = """
+ A aaaaaaaa
+ = a      a
+ S a n  c a
+   a   C  a
+B=Ka A= c a
+   a      a
+aaaa X    aaaa
+a     N d    a
+a  M  =  C=P a
+abbb DY    L a
+abbb   a F=W a
+afbb   a     a
+aaaaaaaaaaaaaa
+"""
 
+initialModel str = 
+    let
+        dropEmptyLine lines =
+            case lines of
+                "" :: rest ->
+                    rest
+
+                _ ->
+                    lines
+
+        dummy = Debug.log "grid" [str]
         grid = LinkedGrid.fromLists Cell.emptyCell 14 14
             <| Cell.stringListToCells
-                  --[ " →e  ED"
-                  --, "dC=L↓=="
-                  --, "↑ b←bSK"
-                  --, "c B=P " 
-                  --, "A=M   " 
+            <| dropEmptyLine
+            <| String.split "\n" str
 
-                [ " A aaaaaaaa"
-                , " = a      a"
-                , " S a n  c a"
-                , "   a   C  a"
-                , "B=Ka A= c a"
-                , "   a      a"
-                , "aaaa X    aaaa"
-                , "a     N d    a"
-                , "a  M  =  C=P a"
-                , "abbb DY    L a"
-                , "abbb   a F=W a"
-                , "afbb   a     a"
-                , "aaaaaaaaaaaaaa"
-                ]
     in
     { undoStack = [grid]
     , debugStr = ""
@@ -282,8 +289,21 @@ initialModel =
     }
     |> updateGraphics
 
+replaceGrid str model = 
+    let
+        grid = LinkedGrid.fromLists Cell.emptyCell 20 20
+            <| Cell.stringListToCells
+            <| String.split "\n" str
+    in
+    { undoStack = [grid]
+    , debugStr = ""
+    , graphics = model.graphics
+    }
+    |> updateGraphics
+
+
 init : (Msg -> msg) -> ( Model, Cmd msg )
-init _ = ( initialModel, Cmd.none )
+init _ = ( initialModel initialGridStr, Cmd.none )
 
 update : Msg -> Model -> Model 
 update msg model =

@@ -6,16 +6,23 @@
     <link rel="icon" type="image/png" href="images/favicon.png">
     <title>Zelda Is You</title>
     <script src="js/wasm-index.js"></script>
-    <script src="js/elm-viz.min.js"></script>
+    <script src="js/elm-viz.js"></script>
     <script src="js/elm-canvas.js"></script>
     <script>
         var hpccWasm = window["@hpcc-js/wasm"];
     </script>
     <link rel="stylesheet" href="css/bootstrap.min.css">
+
+    <style>
+        .editor {
+            float: right;
+            font-family: monospace;
+        }
+    </style>
 </head>
 
 <body>
-    <div class="container">
+    <div class="container-fluid">
         <div id="elm"></div>
         <div id="graph"></div>
     </div>

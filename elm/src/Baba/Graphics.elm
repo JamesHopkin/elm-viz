@@ -25,7 +25,7 @@ animDurationMillis = 350
 
 spritesLoader msg = loadFromImageUrl "images/blah.png" (msg << TextureLoaded)
 
-cellDimensionInt = 20
+cellDimensionInt = 16
 cellDimension = toFloat cellDimensionInt
 
 spriteWidthInt = 24

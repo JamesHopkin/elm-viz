@@ -1,8 +1,9 @@
 port module Viz exposing ( main )
 
 import Browser
-import Html exposing ( div, h3, pre, text, table, td, tr )
-import Html.Attributes exposing ( class, style )
+import Html exposing ( div, h3, pre, text, table, td, tr, textarea )
+import Html.Attributes exposing ( class, style, attribute )
+import Html.Events exposing ( onInput )
 
 import Time
 
@@ -83,6 +84,11 @@ update msg model =
         , Cmd.none
       )
 
+    BabaInput gridStr ->
+      ( { model | baba = Baba.Baba.replaceGrid gridStr model.baba }
+        , Cmd.none
+      )
+
 type alias Flags = Int --Decode.Value
 
 initialGraph = Graph.makeGraph
@@ -123,6 +129,7 @@ type Msg
   = GraphReceived
   | BabaMsg Baba.Baba.Msg
   | BabaTestMsg Baba.BabaTest.Msg
+  | BabaInput String
 
 
 -- update Baba every half second
@@ -142,10 +149,15 @@ view : Model -> Html.Html Msg
 view model =
   div []
     [ Baba.Graphics.view (Baba.Baba.GraphicsMsg >> BabaMsg) model.baba.graphics
+    , div [ class "editor" ]
+      [ textarea
+        [ Html.Attributes.rows 20, Html.Attributes.cols 20, onInput BabaInput ]
+        []
+      ]
     , pre [] [ text model.baba.debugStr ]
     , div [] (List.map text Baba.BabaTest.testResults)
     ]
-
+    
 main : Program Flags Model Msg
 main =
   Browser.element

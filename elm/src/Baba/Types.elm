@@ -25,12 +25,18 @@ type LinkingWord
     = Is
     | Has
     | Makes
+
+type Restrictive
+    = On
     | Near
 
 linkingWordDebugString linkingWord = case linkingWord of
     Is  -> "is"
     Has -> "has"
     Makes -> "makes"
+
+restrictiveDebugString restrictive = case restrictive of
+    On -> "on"
     Near -> "near"
 
 -- predicate not really the right word, but these are things that can go
@@ -106,6 +112,7 @@ complementAsSubject complement = case complement of
 type Text
     = Conjunction Conjunction
     | LinkingWord LinkingWord
+    | Restrictive Restrictive
     | PredicateText Predicate
     | StativeText Stative
     | NounText Noun
@@ -113,6 +120,7 @@ type Text
 textDebugString text = case text of
     Conjunction conjunction -> conjunctionDebugString conjunction
     LinkingWord linkingWord -> linkingWordDebugString linkingWord
+    Restrictive restrictive -> restrictiveDebugString restrictive
     StativeText stative -> stativeDebugString stative
     PredicateText predicate -> predicateDebugString predicate
     NounText noun -> nounDebugString noun

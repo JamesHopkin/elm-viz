@@ -326,6 +326,7 @@ objectDebugChar object =
                 Types.Stop -> 'S'
                 Types.Hot -> 'O'
                 Types.Push -> 'P'
+                Types.Defeat -> 'T'
                 Types.Open -> 'U'
                 Types.Closed -> 'V'
                 Types.Win -> 'W'
