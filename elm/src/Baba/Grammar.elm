@@ -10,13 +10,13 @@ type alias Complement =
     }
 
 type Rhs
-    = Is (AtLeastOne Complement)
-    | Link (AtLeastOne Types.Subject)
+    = Is (List Complement)
+    | Link (List Types.Subject)
 
 type alias Sentence =
-    { subject : AtLeastOne Types.Subject
+    { subject : List Types.Subject
     , restriction : List Types.Restriction
-    , rhs : AtLeastOne Rhs
+    , rhs : List Rhs
     }
 
 -- need a clause function to drop last complement
@@ -98,14 +98,14 @@ parseRhs words = case words of
         case parseComplement isTail of 
             Just ( complement, afterComplement ) ->
                 let
-                    accumComplements : AtLeastOne Complement -> List Types.Text -> ( AtLeastOne Complement, List Types.Text )
+                    accumComplements : List Complement -> List Types.Text -> ( List Complement, List Types.Text )
                     accumComplements acc complWords = case complWords of
                         Types.Conjunction Types.And :: afterAnd ->
 
                             case parseComplement afterAnd of
                                 Just ( anotherComplement, remaining ) ->
                                     accumComplements
-                                        (aloCons anotherComplement acc)
+                                        (anotherComplement :: acc)
                                         remaining
 
                                 _ ->
@@ -113,7 +113,7 @@ parseRhs words = case words of
 
                         _ ->
                             ( acc, complWords )
-                    ( complements, afterAllComplements ) = accumComplements (AtLeastOne complement []) afterComplement
+                    ( complements, afterAllComplements ) = accumComplements [complement] afterComplement
                 in
                 Just ( Is complements, afterAllComplements )
 
@@ -193,19 +193,19 @@ parse : List Types.Text -> Maybe Sentence
 parse words = 
     case parseSubject words of 
         Just ( subject, tail ) ->
-            subjectState (AtLeastOne subject []) tail
+            subjectState [subject] tail
 
         _ ->
             Nothing
 
 -- B
-subjectState : (AtLeastOne Types.Subject) -> List Types.Text -> Maybe Sentence
+subjectState : (List Types.Subject) -> List Types.Text -> Maybe Sentence
 subjectState subject words = case words of 
     Types.Conjunction Types.And :: tail ->
         case parseSubject tail of
             Just ( anotherSubject, afterSubject ) ->
                 subjectState
-                    (aloCons anotherSubject subject)
+                    (anotherSubject :: subject)
                     afterSubject
 
             _ ->
@@ -228,7 +228,7 @@ subjectState subject words = case words of
                         Just <| rhsState
                             { subject = subject
                             , restriction = []
-                            , rhs = AtLeastOne rhs []
+                            , rhs = [rhs]
                             }
                             rest
 
@@ -237,7 +237,7 @@ subjectState subject words = case words of
                         Nothing
 
 type alias RestrictionStateArg =
-    { subject : AtLeastOne Types.Subject
+    { subject : List Types.Subject
     , restriction : List Types.Restriction
     }
 
@@ -266,7 +266,7 @@ restrictionState soFar words = case words of
                         Just <| rhsState
                             { subject = soFar.subject
                             , restriction = soFar.restriction
-                            , rhs = AtLeastOne rhs []
+                            , rhs = [rhs]
                             }
                             rest
 
@@ -283,7 +283,7 @@ rhsState sentenceSoFar words = case words of
             Just ( anotherRhs, afterRhs ) ->
                 rhsState
                     { sentenceSoFar
-                    | rhs = aloCons anotherRhs sentenceSoFar.rhs
+                    | rhs = anotherRhs :: sentenceSoFar.rhs
                     }
                     afterRhs
 
@@ -291,20 +291,3 @@ rhsState sentenceSoFar words = case words of
                 sentenceSoFar
     _ ->
         sentenceSoFar
-
-
-
-type AtLeastOne a = AtLeastOne a (List a)
-
-aloHead alo = case alo of
-    AtLeastOne el _ -> el
-
-aloTail alo = case alo of
-    AtLeastOne _ rest -> rest
-
-aloAsList alo = case alo of
-    AtLeastOne head tail -> head :: tail
-
-aloCons el alo = case alo of
-    AtLeastOne head tail -> AtLeastOne el (head :: tail)
-
