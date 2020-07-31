@@ -20,6 +20,7 @@ import Color
 
 import Baba.Cell as Cell
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction(..) )
+import Baba.Util as Util
 
 animDurationMillis = 350
 
@@ -44,14 +45,22 @@ floorf = floor >> toFloat
 gt = transform [scale 2.0 2.0, translate cellDimension (cellDimension/2.0)]
 
 
-renderWip rowY =
+renderSprite baseX baseY numFrames direction =
     let
+        yoff = case direction of
+                    Left -> 0
+                    Right -> 32
+                    Up -> 64
+                    Down -> 96
+
         frame delta = Texture.sprite
-            { x = if delta > 0.95 then 0 else spriteWidth * floorf (8 * delta)
-            , y = rowY
+            { x = baseX + (if delta > 0.95 then 0 else spriteWidth * floorf (numFrames * delta))
+            , y = baseY + yoff
             , width = spriteWidth
             , height = 32
             }
+
+
 
         render delta x y alpha spriteSheet =
             Canvas.texture
@@ -62,7 +71,6 @@ renderWip rowY =
     in
     render
 
-noAnimSprite x y = Texture.sprite { x = x, y = y, width = 24, height = 32 }
 
 renderNoAnimSprite s scl x y alpha spriteSheet = Canvas.texture
     [gt, Canvas.Settings.Advanced.alpha alpha
@@ -71,6 +79,11 @@ renderNoAnimSprite s scl x y alpha spriteSheet = Canvas.texture
       else [scale scl scl]))
     ]
     ( -s.width / 2.0, -s.height / 2.0 ) ((Texture.sprite s) spriteSheet)
+
+animatedSprites = Dict.fromList
+    [ ( 'n', ( 0, 0, 8 ) ) -- link
+    , ( 'e', ( 24 * 8, 0, 2 ) ) -- zelda
+    ]
 
 instanceSprites = Dict.fromList
     [ ( 'a',    { x = 96, y = 128, width = 24, height = 32 } ) -- fence
@@ -106,10 +119,10 @@ renderTextBG2 = renderNoAnimSprite { x = 86, y = 160, width = 18, height = 14 } 
 renderMessageBox = renderNoAnimSprite { x = 0, y = 160, width = 40, height = 32 } 0.5
 
 
-renderLeft = renderWip 0
-renderRight = renderWip 32
-renderUp = renderWip 64
-renderDown = renderWip 96
+--renderLeft = renderWip 0
+--renderRight = renderWip 32
+--renderUp = renderWip 64
+--renderDown = renderWip 96
 
 
 setGrid grid model =
@@ -158,35 +171,32 @@ renderObject spriteSheet obj delta animX animY alpha =
         y = animY * cellDimension + 5
 
         objChar = Cell.objectDebugChar obj
+
+        animated = Dict.get objChar animatedSprites
     in
-        if objChar == 'n' then
-            let
-                func = case Cell.getObjectDirection obj of
-                    Left -> renderLeft
-                    Right -> renderRight
-                    Up -> renderUp
-                    _ -> renderDown
-            in
-            [func delta x y alpha spriteSheet]
+        case Dict.get objChar animatedSprites of
+            Just animatedSprite ->
+                [Util.curry3 renderSprite animatedSprite 
+                    (Cell.getObjectDirection obj) delta x y alpha spriteSheet]
 
-        else
-            case Dict.get objChar instanceSprites of
-                Just instanceSprite ->
-                    [renderNoAnimSprite instanceSprite 1.0 x y alpha spriteSheet]
+            _ ->
+                case Dict.get objChar instanceSprites of
+                    Just instanceSprite ->
+                        [renderNoAnimSprite instanceSprite 1.0 x y alpha spriteSheet]
 
-                _ ->
-                    case Dict.get objChar textSprites of
-                        Just { bg, sprite } ->
-                            [ (case bg of
-                                0 -> renderTextBG
-                                1 -> renderTextBG2
-                                _ -> renderMessageBox
-                              ) x y alpha spriteSheet
-                            , renderNoAnimSprite sprite 0.6 x y alpha spriteSheet
-                            ]
+                    _ ->
+                        case Dict.get objChar textSprites of
+                            Just { bg, sprite } ->
+                                [ (case bg of
+                                    0 -> renderTextBG
+                                    1 -> renderTextBG2
+                                    _ -> renderMessageBox
+                                  ) x y alpha spriteSheet
+                                , renderNoAnimSprite sprite 0.6 x y alpha spriteSheet
+                                ]
 
-                        _ ->
-                            [Canvas.text [gt, font] ( x - 8, y + 8 ) (String.fromChar objChar)]
+                            _ ->
+                                [Canvas.text [gt, font] ( x - 8, y + 8 ) (String.fromChar objChar)]
 
 
 renderGrid spriteSheet dicts delta grid =

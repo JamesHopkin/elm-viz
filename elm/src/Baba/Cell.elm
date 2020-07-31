@@ -2,7 +2,7 @@ module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveT
                             objectIs, objectIsAny, cellHas, cellHasAny,
                             firstComplement, firstSubject, firstStative, firstLinkingWord,
                             getObjectId, getObjectWord, getObjectDirection, getObjectFlags,
-                            makeObject, makeDirectedObject, makeTextObject,
+                            makeObject, makeDirectedObject, makeTextObject, charToText,
                             setObjectDirection, setObjectFlags, setObjectIs, setObjectWordAndFlags,
                             updateObjectInCell, flipDir, foldObjects,
                             objectDebugChar, cellDebugString, stringListToCells, mismatch,
@@ -260,7 +260,7 @@ firstLinkingWord cell =
     let
         asLinkingWord : Object -> Maybe Types.LinkingWord
         asLinkingWord obj = case getObjectWord obj of
-            Text text -> Types.textAsLinkingWord text
+            Text (Types.LinkingWord word) -> Just word
             _ -> Nothing
     in
     cell
@@ -372,6 +372,68 @@ cellDebugString cell =
                     first :: _           -> (toString first) ++ " "
                     _ -> "· "
 
+charToText : Char -> Types.Text
+charToText c = case c of 
+                    '<' ->
+                        Types.LinkingWord Types.Has
+
+                    '=' ->
+                        Types.LinkingWord Types.Is
+
+                    '&' ->
+                        Types.Conjunction Types.And
+
+                    '!' ->
+                        Types.Conjunction Types.Not
+
+                    '_' ->
+                        Types.Restrictive Types.On
+
+                    'K' ->
+                        Types.StativeText Types.Sink
+
+                    'L' ->
+                        Types.StativeText Types.Pull
+
+                    'M' ->
+                        Types.StativeText Types.Move
+
+                    'O' ->
+                        Types.StativeText Types.Hot
+
+                    'P' ->
+                        Types.StativeText Types.Push
+
+                    'R' ->
+                        Types.StativeText Types.Weak
+
+                    'S' ->
+                        Types.StativeText Types.Stop
+
+                    'T' ->
+                        Types.StativeText Types.Defeat
+
+                    'U' ->
+                        Types.StativeText Types.Open
+
+                    'V' ->
+                        Types.StativeText Types.Closed
+
+                    'W' ->
+                        Types.StativeText Types.Win
+
+                    'Y' ->
+                        Types.StativeText Types.You
+
+                    'X' ->
+                        Types.PredicateText Types.Text
+
+                    'Z' ->
+                        Types.StativeText Types.Melt
+
+                    _ ->
+                        Types.NounText (Types.Noun (Char.toLower c))
+
 
 stringListToCells : List String -> List (List Cell)
 stringListToCells rows =
@@ -399,11 +461,6 @@ stringListToCells rows =
 
             else
                 let newObject = case c of
-                        '<' ->
-                            makeTextObject index (Types.LinkingWord <| Types.Has)
-
-                        '=' ->
-                            makeTextObject index (Types.LinkingWord <| Types.Is)
 
                         '↑' ->
                             makeDirectedObject index 'a' Up
@@ -418,55 +475,8 @@ stringListToCells rows =
                             makeDirectedObject index 'a' Left
 
                         _ ->
-                            if Char.isUpper c then
-                                let
-                                    text = case c of 
-                                            'K' ->
-                                                Types.StativeText Types.Sink
-
-                                            'L' ->
-                                                Types.StativeText Types.Pull
-
-                                            'M' ->
-                                                Types.StativeText Types.Move
-
-                                            'O' ->
-                                                Types.StativeText Types.Hot
-
-                                            'P' ->
-                                                Types.StativeText Types.Push
-
-                                            'R' ->
-                                                Types.StativeText Types.Weak
-
-                                            'S' ->
-                                                Types.StativeText Types.Stop
-
-                                            'T' ->
-                                                Types.StativeText Types.Defeat
-
-                                            'U' ->
-                                                Types.StativeText Types.Open
-
-                                            'V' ->
-                                                Types.StativeText Types.Closed
-
-                                            'W' ->
-                                                Types.StativeText Types.Win
-
-                                            'Y' ->
-                                                Types.StativeText Types.You
-
-                                            'X' ->
-                                                Types.PredicateText Types.Text
-
-                                            'Z' ->
-                                                Types.StativeText Types.Melt
-
-                                            _ ->
-                                                Types.NounText (Types.Noun (Char.toLower c))
-                                in
-                                makeTextObject index text
+                            if Char.isUpper c || List.member c (String.toList "=<") then
+                                makeTextObject index (charToText c)
                             else
                                 makeObject index c
                 in

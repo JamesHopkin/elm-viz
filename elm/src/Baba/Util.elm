@@ -21,3 +21,4 @@ ensure default ls maybeResult =
             default
 
 curry2 f ( a, b ) = f a b
+curry3 f ( a, b, c ) = f a b c

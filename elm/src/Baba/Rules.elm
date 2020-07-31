@@ -5,9 +5,16 @@ import Baba.Cell exposing (..)
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
 import Baba.Types as Types
 
+
+
 type Rule
     = Is Types.Subject Types.Complement
     | Has Types.Subject Types.Subject
+
+type alias RestrictedRule =
+    { rule : Rule
+    , restrictions : List Types.Restriction
+    }
 
 ruleDebugString rule = case rule of
     Is c v -> String.join " " [Types.subjectDebugString c, "is", Types.complementDebugString v]

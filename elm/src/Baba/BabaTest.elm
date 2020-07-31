@@ -6,6 +6,7 @@ import List.Extra
 
 import Baba.Baba as Baba exposing ( countChars )
 import Baba.Cell exposing (..)
+import Baba.Grammar
 import Baba.Move exposing (..)
 import Baba.Rules as Rules exposing (..)
 import Baba.Types as Types

@@ -140,6 +140,12 @@ textAsComplement text = case text of
     NounText noun -> Just (NounComplement noun)
     _ -> Nothing
 
+type alias Restriction =
+    { word : Restrictive
+    , noun : Subject
+    , sense : Bool
+    }
+
 --------------
 -- Stative flags
 
