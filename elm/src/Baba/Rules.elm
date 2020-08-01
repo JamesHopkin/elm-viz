@@ -1,20 +1,18 @@
 module Baba.Rules exposing ( lookForRules, ruleDebugString, getTransform,
+                            rulesFromSentence, ruleDebugString_New,
                             Rule(..) )
 
 import Baba.Cell exposing (..)
+import Baba.Grammar as Grammar
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
 import Baba.Types as Types
 
-
+import Baba.Util exposing (..)
 
 type Rule
     = Is Types.Subject Types.Complement
     | Has Types.Subject Types.Subject
 
-type alias RestrictedRule =
-    { rule : Rule
-    , restrictions : List Types.Restriction
-    }
 
 ruleDebugString rule = case rule of
     Is c v -> String.join " " [Types.subjectDebugString c, "is", Types.complementDebugString v]
@@ -66,6 +64,36 @@ lookForRulesOnAxis axis =
     in
         surrounding impl [] axis
 
+lookForRulesOnAxis_New : Axis -> List Rule_New
+lookForRulesOnAxis_New startingAxis = 
+    let
+        impl : Maybe Axis -> List Types.Text -> List Rule_New -> List Rule_New
+        impl axis current complete =
+            let
+                getText a = firstText (LinkedGrid.axisGet a)
+                next = Maybe.andThen (LinkedGrid.axisForward 1) axis
+            in
+            case Maybe.andThen getText axis of
+                    Just text ->
+                        impl next (text :: current) complete
+
+                    _ ->
+                        let
+                            sentences =
+                                if List.length current > 0 then
+                                    Grammar.findSentences (List.reverse current)
+                                        |> List.concatMap rulesFromSentence
+                                        |> (++) complete
+                                else
+                                    complete
+                        in
+                        if isJust axis then
+                            impl next [] sentences
+                        else
+                            sentences
+    in
+    impl (Just startingAxis) [] []
+
 
 fold :
     (loc -> Maybe loc)
@@ -115,3 +143,48 @@ getTransform rule = case rule of
 
     _ ->
         Nothing
+
+
+type Rule_New
+    = Is_New Types.Subject (List Grammar.Restriction) Grammar.Complement
+    | Link Types.LinkingWord Types.Subject (List Grammar.Restriction) Types.Subject
+
+ruleDebugString_New rule = 
+    let
+
+        subjectAndRestrictions s r = 
+            [Types.subjectDebugString s] ++ (if List.length r == 0 then [] else [
+                String.join " and " (List.map Grammar.restrictionDebugString r)
+            ])
+    in
+    case rule of
+        Is_New s r c -> String.join " " <| (subjectAndRestrictions s r) ++ ["is", Grammar.complementDebugString c]
+        Link l s r o -> String.join " " <| (subjectAndRestrictions s r) ++ [Types.linkingWordDebugString l, Types.subjectDebugString o]
+
+getRestrictions : Rule_New -> List Grammar.Restriction
+getRestrictions rule =
+    []
+
+rulesFromSentence : Grammar.Sentence -> List Rule_New
+rulesFromSentence sentence =
+    let
+
+        subjectFold : Types.Subject -> List Rule_New -> List Rule_New
+        subjectFold subject acc =
+            let
+                rhsFold : Grammar.Rhs -> List Rule_New -> List Rule_New
+                rhsFold rhs rhsAcc = 
+                    case rhs of
+                        Grammar.Is complements ->
+                            let
+                                complementFold : Grammar.Complement -> List Rule_New -> List Rule_New
+                                complementFold compl complAcc =
+                                    (Is_New subject sentence.restriction compl) :: complAcc
+                            in
+                                List.foldr complementFold rhsAcc complements
+                        _ ->
+                            rhsAcc
+            in
+            List.foldr rhsFold acc sentence.rhs
+    in
+    List.foldr subjectFold [] sentence.subject

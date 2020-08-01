@@ -1,6 +1,6 @@
 module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveToCell,
                             objectIs, objectIsAny, cellHas, cellHasAny,
-                            firstComplement, firstSubject, firstStative, firstLinkingWord,
+                            firstText, firstComplement, firstSubject, firstStative, firstLinkingWord,
                             getObjectId, getObjectWord, getObjectDirection, getObjectFlags,
                             makeObject, makeDirectedObject, makeTextObject, charToText,
                             setObjectDirection, setObjectFlags, setObjectIs, setObjectWordAndFlags,
@@ -254,6 +254,26 @@ cellHas stative cell = List.any (objectIs stative) cell
 
 cellHasAny : List Types.Stative -> Cell -> Bool
 cellHasAny statives cell = List.any (objectIsAny statives) cell
+
+firstText : Cell -> Maybe Types.Text
+firstText cell =
+    let
+        asText : Object -> Maybe Types.Text
+        asText obj = 
+            let
+                word = getObjectWord obj
+            in
+            case word of 
+                Text text -> 
+                    Just text
+
+                _ ->
+                    Nothing
+    in
+    cell
+        |> List.filterMap asText
+        |> List.head
+
 
 firstLinkingWord : Cell -> Maybe Types.LinkingWord
 firstLinkingWord cell =

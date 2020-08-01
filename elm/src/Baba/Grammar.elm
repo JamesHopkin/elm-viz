@@ -9,13 +9,31 @@ type alias Complement =
     , sense : Bool
     }
 
+complementDebugString compl =
+    let
+        str = Types.complementDebugString compl.word
+    in
+    if compl.sense then str else "not " ++ str
+
+type alias Restriction =
+    { word : Types.Restrictive
+    , noun : Types.Subject
+    , sense : Bool
+    }
+
+restrictionDebugString restr =
+    let
+        str = (Types.restrictiveDebugString restr.word) ++ " " ++ (Types.subjectDebugString restr.noun)
+    in
+    if restr.sense then str else "not " ++ str
+
 type Rhs
     = Is (List Complement)
-    | Link (List Types.Subject)
+    | Link Types.LinkingWord (List Types.Subject)
 
 type alias Sentence =
     { subject : List Types.Subject
-    , restriction : List Types.Restriction
+    , restriction : List Restriction
     , rhs : List Rhs
     }
 
@@ -161,7 +179,7 @@ parseComplement words = case words of
         -- no word
         Nothing
 
-parseRestriction : List Types.Text -> Maybe ( Types.Restriction, List Types.Text )
+parseRestriction : List Types.Text -> Maybe ( Restriction, List Types.Text )
 parseRestriction words = case words of
     Types.Conjunction Types.Not :: Types.Restrictive restrictive :: tail ->
         case parseSubject tail of 
@@ -189,7 +207,7 @@ parseRestriction words = case words of
         Nothing
 
 -- A
-parse : List Types.Text -> Maybe Sentence
+parse : List Types.Text -> Maybe ( Sentence, List Types.Text )
 parse words = 
     case parseSubject words of 
         Just ( subject, tail ) ->
@@ -199,7 +217,7 @@ parse words =
             Nothing
 
 -- B
-subjectState : (List Types.Subject) -> List Types.Text -> Maybe Sentence
+subjectState : (List Types.Subject) -> List Types.Text -> Maybe ( Sentence, List Types.Text )
 subjectState subject words = case words of 
     Types.Conjunction Types.And :: tail ->
         case parseSubject tail of
@@ -238,10 +256,10 @@ subjectState subject words = case words of
 
 type alias RestrictionStateArg =
     { subject : List Types.Subject
-    , restriction : List Types.Restriction
+    , restriction : List Restriction
     }
 
-restrictionState : RestrictionStateArg -> List Types.Text -> Maybe Sentence
+restrictionState : RestrictionStateArg -> List Types.Text -> Maybe ( Sentence, List Types.Text )
 restrictionState soFar words = case words of
     Types.Conjunction Types.And :: tail ->
         case parseRestriction tail of
@@ -276,7 +294,7 @@ restrictionState soFar words = case words of
 
 
 -- rhs
-rhsState : Sentence -> List Types.Text -> Sentence
+rhsState : Sentence -> List Types.Text -> ( Sentence, List Types.Text )
 rhsState sentenceSoFar words = case words of
     Types.Conjunction Types.And :: tail ->
         case parseRhs tail of
@@ -288,6 +306,24 @@ rhsState sentenceSoFar words = case words of
                     afterRhs
 
             _ ->
-                sentenceSoFar
+                ( sentenceSoFar, words )
     _ ->
-        sentenceSoFar
+        ( sentenceSoFar, words )
+
+
+findSentences : List Types.Text -> List Sentence
+findSentences allWords =
+    let
+        impl words acc =
+            case words of
+                _ :: tail ->
+                    case parse words of
+                        Just ( sentence, remaining) ->
+                            impl remaining (sentence :: acc)
+
+                        _ ->
+                            impl tail acc
+                _ ->
+                    acc
+    in
+    impl allWords []
