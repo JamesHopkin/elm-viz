@@ -357,6 +357,10 @@ objectDebugChar object =
         Text (Types.PredicateText Types.Text) -> 'X'
         Text (Types.LinkingWord Types.Is) -> '='
         Text (Types.LinkingWord Types.Has) -> '<'
+
+        Text (Types.Conjunction Types.And) -> '&'
+        Text (Types.Conjunction Types.Not) -> '!'
+        Text (Types.Restrictive Types.On) -> '_'
         _ -> '@'
 
 
@@ -495,7 +499,7 @@ stringListToCells rows =
                             makeDirectedObject index 'a' Left
 
                         _ ->
-                            if Char.isUpper c || List.member c (String.toList "=<") then
+                            if Char.isUpper c || List.member c (String.toList "=<&!_") then
                                 makeTextObject index (charToText c)
                             else
                                 makeObject index c

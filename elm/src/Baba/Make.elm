@@ -1,7 +1,7 @@
 module Baba.Make exposing ( doTransformations )
 
 import Baba.Cell as Cell exposing ( Grid )
-import Baba.Rules exposing ( Rule(..), PositiveAndNegativeRules, Rule_New(..), getApplicableTransform )
+import Baba.Rules exposing ( PositiveAndNegativeRules, Rule_New(..), getApplicableTransform )
 import Baba.Types as Types
 
 import Baba.LinkedGrid as LinkedGrid

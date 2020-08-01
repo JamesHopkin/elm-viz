@@ -1,7 +1,7 @@
-module Baba.Rules exposing ( lookForRules, ruleDebugString, getTransform, getApplicableStative,
+module Baba.Rules exposing ( getTransform,
                             rulesFromSentence, ruleDebugString_New, PositiveAndNegativeRules,
                             lookForRules_New, getApplicableStative_New, getApplicableTransform,
-                            Rule(..), Rule_New )
+                            Rule_New )
 
 import Baba.Cell as Cell exposing (..)
 import Baba.Grammar as Grammar
@@ -10,62 +10,8 @@ import Baba.Types as Types
 
 import Baba.Util exposing (..)
 
-type Rule
-    = Is Types.Subject Types.Complement
-    | Has Types.Subject Types.Subject
 
-
-ruleDebugString rule = case rule of
-    Is c v -> String.join " " [Types.subjectDebugString c, "is", Types.complementDebugString v]
-    Has l r -> String.join " " [Types.subjectDebugString l, "has", Types.subjectDebugString r]
-
-surrounding : 
-    (el -> el -> el -> acc -> acc)
-    -> acc
-    -> LinkedGrid.Axis el
-    -> acc
-surrounding fn a axis =
-        case ( LinkedGrid.axisForward -1 axis, LinkedGrid.axisForward 1 axis ) of
-            ( Just prevAxis, Just nextAxis )
-                -> fn
-                    (LinkedGrid.axisGet prevAxis)
-                    (LinkedGrid.axisGet axis)
-                    (LinkedGrid.axisGet nextAxis)
-                    (surrounding fn a nextAxis)
-
-            ( Nothing, Just nextAxis )
-                -> surrounding fn a nextAxis
-
-            _ -> a
-
-lookForRulesOnAxis : Axis -> List Rule
-lookForRulesOnAxis axis = 
-    let
-        impl : Cell -> Cell -> Cell -> List Rule -> List Rule
-        impl x y z a =
-            case ( firstSubject x, firstLinkingWord y ) of
-                ( Just lhs, Just link ) ->
-                    let
-                        complementCases complement =
-                            case link of
-                                Types.Is ->
-                                    Just (Is lhs complement)
-
-                                Types.Has ->
-                                    Maybe.map (\rhs -> Has lhs rhs) (Types.complementAsSubject complement)
-
-                                _ -> Nothing
-                    in
-                    case Maybe.andThen complementCases (firstComplement z) of
-                        Just rule -> rule :: a
-                        _ -> a
-
-                _ -> a
-
-    in
-        surrounding impl [] axis
-
-add ( lp, ln ) ( rp, rn ) = ( lp ++ ln, rp ++ rn )
+add ( lp, ln ) ( rp, rn ) = ( lp ++ rp, ln ++ rn )
 
 concatMap : (a -> ( List b, List c )) -> List a -> ( List b, List c )
 concatMap f list =
@@ -96,6 +42,10 @@ lookForRulesOnAxis_New startingAxis =
                                         |> concatMap rulesFromSentence
                                         |> add complete
                                 else
+                                    --let
+                                    --    ( p, n ) = complete
+                                    --    dummy = Debug.log "on axis" [List.length p, List.length n]
+                                    --in
                                     complete
                         in
                         if isJust axis then
@@ -119,35 +69,6 @@ fold nextFn f loc acc =
             Just next -> fold nextFn f next soFar
             _ -> soFar
 
-lookForRules : Grid -> List Rule
-lookForRules grid =
-    case LinkedGrid.at 0 0 grid of
-        Just origin ->
-            let
-                rowRules : List Rule
-                rowRules = 
-                    let
-                        rowFunc : Location -> List Rule
-                        rowFunc loc = lookForRulesOnAxis <| LinkedGrid.makeAxis loc Right
-
-                        prependRow : Location -> List Rule -> List Rule
-                        prependRow = rowFunc >> (++)
-                    in
-                        fold LinkedGrid.below prependRow origin []
-
-
-                columnRules : List Rule
-                columnRules = 
-                    let
-                        columnFunc loc = lookForRulesOnAxis <| LinkedGrid.makeAxis loc Down
-                    in
-                        fold LinkedGrid.right (columnFunc >> (++)) origin []
-
-            in
-                (Is (Types.Predicate Types.Text) (Types.Stative Types.Push)) ::
-                    rowRules ++ columnRules
-        _ -> []
-
 lookForRules_New : Grid -> PositiveAndNegativeRules
 lookForRules_New grid =
     case LinkedGrid.at 0 0 grid of
@@ -159,10 +80,7 @@ lookForRules_New grid =
                         rowFunc : Location -> PositiveAndNegativeRules
                         rowFunc loc = lookForRulesOnAxis_New <| LinkedGrid.makeAxis loc Right
 
-                        prependRow : Location -> PositiveAndNegativeRules -> PositiveAndNegativeRules
-                        prependRow = rowFunc >> add
-
-                        ( pos, neg ) = fold LinkedGrid.below prependRow origin ( [], [] )
+                        ( pos, neg ) = fold LinkedGrid.below (rowFunc >> add) origin ( [], [] )
 
                         textIsPush = Is_New (Types.Predicate Types.Text) [] (Types.Stative Types.Push)
                     in
@@ -173,8 +91,9 @@ lookForRules_New grid =
                 columnRules = 
                     let
                         columnFunc loc = lookForRulesOnAxis_New <| LinkedGrid.makeAxis loc Down
+                        result = fold LinkedGrid.right (columnFunc >> add) origin ( [], [] )
                     in
-                        fold LinkedGrid.right (columnFunc >> add) origin ( [], [] )
+                        result
 
             in
                 add rowRules columnRules
@@ -193,7 +112,7 @@ type Rule_New
     = Is_New Types.Subject (List Grammar.Restriction) Types.Complement
     | Link Types.LinkingWord Types.Subject (List Grammar.Restriction) Types.Subject
 
-ruleDebugString_New rule sense = 
+ruleDebugString_New sense rule = 
     let
 
         subjectAndRestrictions s r = 
@@ -242,22 +161,6 @@ rulesFromSentence sentence =
     List.foldr subjectFold ( [], [] ) sentence.subject
 
 -- will need neighbouring cells in the end
-getApplicableStative : Rule -> Cell -> Object -> Maybe Types.Stative
-getApplicableStative rule cell object =
-    case ( Cell.getObjectWord object, rule ) of 
-            ( Cell.Instance objectNoun, Is (Types.NounSubject noun) (Types.Stative stative) ) ->
-                if Types.nounsEqual noun objectNoun then
-                    Just stative
-
-                else
-                    Nothing
-
-            ( Cell.Text _, Is (Types.Predicate Types.Text) (Types.Stative stative) ) ->
-                Just stative
-
-            _ ->
-                Nothing
-
 getApplicableStative_New : Rule_New -> Cell -> Object -> Maybe Types.Stative
 getApplicableStative_New rule cell object =
     case ( Cell.getObjectWord object, rule ) of 

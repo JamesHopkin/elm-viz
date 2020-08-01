@@ -49,7 +49,7 @@ applyRules_New grid =
 
         foldFunc : ( Int, Int, Cell.Object ) -> Cell.Grid -> Cell.Grid
         foldFunc ( x, y, object ) gridToUpdate =
-            case LinkedGrid.at x y grid of
+            case LinkedGrid.at x y gridToUpdate of
                 Just location ->
                     let
                         cell = LinkedGrid.getContents location
@@ -63,9 +63,8 @@ applyRules_New grid =
                                 Nothing ->
                                     flags
 
-
+                        -- not considering negatives yet!
                         calculatedFlags = List.foldr ruleFoldFunc 0 pos
-
                     in
                         if calculatedFlags == Cell.getObjectFlags object then
                             gridToUpdate
@@ -76,50 +75,11 @@ applyRules_New grid =
                             Cell.updateObjectInCell updatedObject location
                                 |> LinkedGrid.gridFromLocation
                 _ ->
-                    gridToUpdate
+                    LinkedGrid.make [] 0 0
 
     in
     ( rules, Cell.foldObjects foldFunc grid grid )
 
-
-applyRules : Cell.Grid -> ( List Rules.Rule, Cell.Grid )
-applyRules grid =
-    let
-        rules = Rules.lookForRules grid
-
-        foldFunc : ( Int, Int, Cell.Object ) -> Cell.Grid -> Cell.Grid
-        foldFunc ( x, y, object ) gridToUpdate =
-            case LinkedGrid.at x y grid of
-                Just location ->
-                    let
-                        cell = LinkedGrid.getContents location
-
-                        ruleFoldFunc : Rules.Rule -> Int -> Int
-                        ruleFoldFunc rule flags =
-                            case Rules.getApplicableStative rule cell object of
-                                Just stative ->
-                                    Bitwise.or flags (Types.flagFor stative)
-
-                                Nothing ->
-                                    flags
-
-
-                        calculatedFlags = List.foldr ruleFoldFunc 0 rules
-
-                    in
-                        if calculatedFlags == Cell.getObjectFlags object then
-                            gridToUpdate
-                        else
-                            let
-                                updatedObject = Cell.setObjectFlags calculatedFlags object
-                            in
-                            Cell.updateObjectInCell updatedObject location
-                                |> LinkedGrid.gridFromLocation
-                _ ->
-                    gridToUpdate
-
-    in
-    ( rules, Cell.foldObjects foldFunc grid grid )
 
 -- single step of the grid
 wait : Model -> Model
@@ -148,7 +108,7 @@ turn forceTransform youDirection currentGrid =
     let
 
         -- rules
-        ( initialRules, gridWithUpToDateRules ) = applyRules currentGrid
+        ( initialRules, gridWithUpToDateRules ) = applyRules_New currentGrid
 
         -- you
         ( numberOfYousMoved, afterYousMoved ) =
@@ -279,20 +239,21 @@ type alias Model =
     }
 
 initialGridStr = """
- A aaaaaaaa
- = a      a
- S a n  c a
-   a   C  a
-B=Ka A= c a
-   a      a
-aaaa X    aaaa
-a     N d    a
-a  M  =  C=P a
-abbb DY    L a
-abbb   a F=W a
-afbb   a     a
-aaaaaaaaaaaaaa
+ A eeeeeeee
+ = e      e
+ S e n  c e
+   e   C  e
+B=Ke E= c e
+   e _    e
+eeee X &  eeee
+e     N d    e
+e  M  =  C=P e
+ebbb DY    L e
+ebbb   e F=W e
+efbb   e     e
+eeeeeeeeeeeeee
 """
+
 
 initialModel str = 
     let
@@ -304,7 +265,6 @@ initialModel str =
                 _ ->
                     lines
 
-        dummy = Debug.log "grid" [str]
         grid = LinkedGrid.fromLists Cell.emptyCell 14 14
             <| Cell.stringListToCells
             <| dropEmptyLine
@@ -345,7 +305,9 @@ update msg model =
                         --let
                         --    dummy = Debug.log "game objects" (countChars grid)
                         --in
-                        List.map Rules.ruleDebugString (Rules.lookForRules grid)
+                        Rules.lookForRules_New grid
+                            |> Tuple.first
+                            |> List.map (Rules.ruleDebugString_New True)
                             |> String.join "\n"
                     _ -> ""
             in

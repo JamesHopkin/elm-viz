@@ -82,11 +82,11 @@ renderNoAnimSprite s scl x y alpha spriteSheet = Canvas.texture
 
 animatedSprites = Dict.fromList
     [ ( 'n', ( 0, 0, 8 ) ) -- link
-    , ( 'e', ( 24 * 8, 0, 2 ) ) -- zelda
+    , ( 'a', ( 24 * 8, 0, 2 ) ) -- zelda
     ]
 
 instanceSprites = Dict.fromList
-    [ ( 'a',    { x = 96, y = 128, width = 24, height = 32 } ) -- fence
+    [ ( 'e',    { x = 96, y = 128, width = 24, height = 32 } ) -- fence
     , ( 'b',    { x = 72, y = 128, width = 24, height = 32 } ) -- water
     , ( 'c',    { x = 0, y = 128, width = 24, height = 32 } ) -- rock
     , ( 'd',    { x = 48, y = 128, width = 24, height = 32 } ) -- shrub
@@ -94,7 +94,7 @@ instanceSprites = Dict.fromList
     ]
 
 textSprites = Dict.fromList
-    [ ( 'A',    { bg = 0, sprite = { x = 144, y = 208, width = 31, height = 16 } } ) -- fence
+    [ ( 'E',    { bg = 0, sprite = { x = 144, y = 208, width = 31, height = 16 } } ) -- fence
     , ( 'B',    { bg = 1, sprite = { x = 0, y = 224, width = 32, height = 16 } } ) -- water
     , ( 'C',    { bg = 0, sprite = { x = 72, y = 224, width = 26, height = 16 } } ) -- rock
     , ( 'D',    { bg = 1, sprite = { x = 16, y = 208, width = 32, height = 16 } } ) -- shrub
