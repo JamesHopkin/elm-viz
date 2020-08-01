@@ -42,6 +42,44 @@ import Baba.Util exposing (..)
 --    |> Maybe.map (LinkedGrid.toDebugString cellDebugString)
 --    |> Maybe.withDefault "!" 
 
+applyRules_New : Cell.Grid -> ( Rules.PositiveAndNegativeRules, Cell.Grid )
+applyRules_New grid =
+    let
+        (( pos, neg ) as rules) = Rules.lookForRules_New grid
+
+        foldFunc : ( Int, Int, Cell.Object ) -> Cell.Grid -> Cell.Grid
+        foldFunc ( x, y, object ) gridToUpdate =
+            case LinkedGrid.at x y grid of
+                Just location ->
+                    let
+                        cell = LinkedGrid.getContents location
+
+                        ruleFoldFunc : Rules.Rule_New -> Int -> Int
+                        ruleFoldFunc rule flags =
+                            case Rules.getApplicableStative_New rule cell object of
+                                Just stative ->
+                                    Bitwise.or flags (Types.flagFor stative)
+
+                                Nothing ->
+                                    flags
+
+
+                        calculatedFlags = List.foldr ruleFoldFunc 0 pos
+
+                    in
+                        if calculatedFlags == Cell.getObjectFlags object then
+                            gridToUpdate
+                        else
+                            let
+                                updatedObject = Cell.setObjectFlags calculatedFlags object
+                            in
+                            Cell.updateObjectInCell updatedObject location
+                                |> LinkedGrid.gridFromLocation
+                _ ->
+                    gridToUpdate
+
+    in
+    ( rules, Cell.foldObjects foldFunc grid grid )
 
 
 applyRules : Cell.Grid -> ( List Rules.Rule, Cell.Grid )
@@ -51,45 +89,34 @@ applyRules grid =
 
         foldFunc : ( Int, Int, Cell.Object ) -> Cell.Grid -> Cell.Grid
         foldFunc ( x, y, object ) gridToUpdate =
-            let
-                applicable rule =  
-                    case ( Cell.getObjectWord object, rule ) of 
-                        ( Cell.Instance objectNoun, Rules.Is (Types.NounSubject noun) (Types.Stative stative) ) ->
-                            if Types.nounsEqual noun objectNoun then
-                                Just stative
-
-                            else
-                                Nothing
-
-                        ( Cell.Text _, Rules.Is (Types.Predicate Types.Text) (Types.Stative stative) ) ->
-                            Just stative
-
-                        _ ->
-                            Nothing
-
-                ruleFoldFunc : Rules.Rule -> Int -> Int
-                ruleFoldFunc rule flags =
-                    case applicable rule of
-                        Just stative ->
-                            Bitwise.or flags (Types.flagFor stative)
-
-                        Nothing ->
-                            flags
-
-
-                calculatedFlags = List.foldr ruleFoldFunc 0 rules
-
-            in
-                if calculatedFlags == Cell.getObjectFlags object then
-                    gridToUpdate
-                else
+            case LinkedGrid.at x y grid of
+                Just location ->
                     let
-                        updatedObject = Cell.setObjectFlags calculatedFlags object
+                        cell = LinkedGrid.getContents location
+
+                        ruleFoldFunc : Rules.Rule -> Int -> Int
+                        ruleFoldFunc rule flags =
+                            case Rules.getApplicableStative rule cell object of
+                                Just stative ->
+                                    Bitwise.or flags (Types.flagFor stative)
+
+                                Nothing ->
+                                    flags
+
+
+                        calculatedFlags = List.foldr ruleFoldFunc 0 rules
+
                     in
-                    LinkedGrid.at x y gridToUpdate
-                        |> Maybe.map (Cell.updateObjectInCell updatedObject)
-                        |> Maybe.map LinkedGrid.gridFromLocation
-                        |> Maybe.withDefault gridToUpdate 
+                        if calculatedFlags == Cell.getObjectFlags object then
+                            gridToUpdate
+                        else
+                            let
+                                updatedObject = Cell.setObjectFlags calculatedFlags object
+                            in
+                            Cell.updateObjectInCell updatedObject location
+                                |> LinkedGrid.gridFromLocation
+                _ ->
+                    gridToUpdate
 
     in
     ( rules, Cell.foldObjects foldFunc grid grid )
@@ -151,11 +178,12 @@ turn forceTransform youDirection currentGrid =
 
         --dummy = Debug.log "move counts" [numberOfYousMoved, numberOfOthersMoved]
 
-        transform rules grid =
+        transform ( pos, neg ) grid =
             let
-                transformRules = List.filter (\r -> isJust (Rules.getTransform r)) rules
+                justTransforms = List.filter (\r -> isJust (Rules.getTransform r))
+                transformRules = ( justTransforms pos, justTransforms neg )
             in
-            if List.isEmpty transformRules then
+            if List.isEmpty (Tuple.first transformRules) then
                 grid
             else
                 Make.doTransformations transformRules grid
@@ -163,9 +191,9 @@ turn forceTransform youDirection currentGrid =
     in
     if forceTransform || numberOfYousMoved + numberOfOthersMoved > 0 then
         afterAllMoves
-            |> applyRules |> Tuple.second
+            |> applyRules_New |> Tuple.second
             |> Destroy.doDestroys 
-            |> applyRules
+            |> applyRules_New
             |> curry2 transform
             |> Just
     else

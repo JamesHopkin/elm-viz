@@ -1,7 +1,7 @@
 module Baba.Make exposing ( doTransformations )
 
 import Baba.Cell as Cell exposing ( Grid )
-import Baba.Rules exposing ( Rule(..) )
+import Baba.Rules exposing ( Rule(..), PositiveAndNegativeRules, Rule_New(..), getApplicableTransform )
 import Baba.Types as Types
 
 import Baba.LinkedGrid as LinkedGrid
@@ -13,7 +13,7 @@ emptyGrid : Grid
 emptyGrid = LinkedGrid.make [] 0 0
 
 
-doTransformations : List Rule -> Grid -> Grid
+doTransformations : PositiveAndNegativeRules -> Grid -> Grid
 doTransformations rules grid =
     let
         objFold : ( Int, Int, Cell.Object ) -> Cell.Grid -> Cell.Grid
@@ -30,38 +30,27 @@ doTransformations rules grid =
                     in
                         LinkedGrid.setContents (updatedObject :: withoutObject) location
 
-
-                applicable rule =
-                    case ( Cell.getObjectWord object, rule ) of 
-                        ( Cell.Instance objectNoun, Is (Types.NounSubject noun) (Types.NounComplement obj) ) ->
-                            if Types.nounsEqual objectNoun noun then
-                                Just obj
-
-                            else
-                                Nothing
-
-                        ( Cell.Text _, Is (Types.Predicate Types.Text) (Types.NounComplement obj) ) ->
-                            Just obj
-
-                        _ ->
-                            Nothing
-
-                ruleFold : Rule -> Cell.Grid -> Cell.Grid
+                ruleFold : Rule_New -> Cell.Grid -> Cell.Grid
                 ruleFold rule ruleApplyGrid =
-                    case applicable rule of
-                        Just newNoun ->
-                            case LinkedGrid.at x y ruleApplyGrid of
-                                    Just location ->
-                                        LinkedGrid.gridFromLocation (updateCell newNoun location)
+                    case LinkedGrid.at x y ruleApplyGrid of
+                        Just location ->
+                            let
+                                cell = LinkedGrid.getContents location
+                            in
 
-                                    _ ->
-                                        emptyGrid -- should never happen!
+                            case getApplicableTransform rule cell object of
+                                Just newNoun ->
+                                    LinkedGrid.gridFromLocation (updateCell newNoun location)
+
+                                _ ->
+                                    ruleApplyGrid
 
                         _ ->
-                            ruleApplyGrid
+                            emptyGrid -- should never happen!
+
 
             in
-            List.foldl ruleFold objFoldGrid rules
+            List.foldl ruleFold objFoldGrid (Tuple.first rules) -- work out how to handle negatives next
 
     in
     Cell.foldObjects objFold grid grid
