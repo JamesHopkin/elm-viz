@@ -1,7 +1,7 @@
 module Baba.Rules exposing ( getTransform,
-                            rulesFromSentence, ruleDebugString_New, PositiveAndNegativeRules,
-                            lookForRules_New, getApplicableStative_New, getApplicableTransform,
-                            Rule_New )
+                            rulesFromSentence, ruleDebugString, PositiveAndNegativeRules,
+                            lookForRules, getApplicableStative, getApplicableTransform,
+                            Rule )
 
 import Baba.Cell as Cell exposing (..)
 import Baba.Grammar as Grammar
@@ -21,8 +21,8 @@ concatMap f list =
     in
     List.foldr foldFunc ( [], [] ) (List.map f list)
 
-lookForRulesOnAxis_New : Axis -> PositiveAndNegativeRules
-lookForRulesOnAxis_New startingAxis = 
+lookForRulesOnAxis : Axis -> PositiveAndNegativeRules
+lookForRulesOnAxis startingAxis = 
     let
         impl : Maybe Axis -> List Types.Text -> PositiveAndNegativeRules -> PositiveAndNegativeRules
         impl axis current (( pos, neg ) as complete) =
@@ -69,8 +69,8 @@ fold nextFn f loc acc =
             Just next -> fold nextFn f next soFar
             _ -> soFar
 
-lookForRules_New : Grid -> PositiveAndNegativeRules
-lookForRules_New grid =
+lookForRules : Grid -> PositiveAndNegativeRules
+lookForRules grid =
     case LinkedGrid.at 0 0 grid of
         Just origin ->
             let
@@ -78,11 +78,11 @@ lookForRules_New grid =
                 rowRules = 
                     let
                         rowFunc : Location -> PositiveAndNegativeRules
-                        rowFunc loc = lookForRulesOnAxis_New <| LinkedGrid.makeAxis loc Right
+                        rowFunc loc = lookForRulesOnAxis <| LinkedGrid.makeAxis loc Right
 
                         ( pos, neg ) = fold LinkedGrid.below (rowFunc >> add) origin ( [], [] )
 
-                        textIsPush = Is_New (Types.Predicate Types.Text) [] (Types.Stative Types.Push)
+                        textIsPush = Is (Types.Predicate Types.Text) [] (Types.Stative Types.Push)
                     in
                         ( textIsPush :: pos, neg )
 
@@ -90,7 +90,7 @@ lookForRules_New grid =
                 columnRules : PositiveAndNegativeRules
                 columnRules = 
                     let
-                        columnFunc loc = lookForRulesOnAxis_New <| LinkedGrid.makeAxis loc Down
+                        columnFunc loc = lookForRulesOnAxis <| LinkedGrid.makeAxis loc Down
                         result = fold LinkedGrid.right (columnFunc >> add) origin ( [], [] )
                     in
                         result
@@ -101,18 +101,18 @@ lookForRules_New grid =
         _ -> ( [], [] )
 
 getTransform rule = case rule of
-    Is_New subj restrictions (Types.NounComplement (Types.Noun obj)) ->
+    Is subj restrictions (Types.NounComplement (Types.Noun obj)) ->
         Just ( subj, restrictions, obj )
 
     _ ->
         Nothing
 
 
-type Rule_New
-    = Is_New Types.Subject (List Grammar.Restriction) Types.Complement
+type Rule
+    = Is Types.Subject (List Grammar.Restriction) Types.Complement
     | Link Types.LinkingWord Types.Subject (List Grammar.Restriction) Types.Subject
 
-ruleDebugString_New sense rule = 
+ruleDebugString sense rule = 
     let
 
         subjectAndRestrictions s r = 
@@ -121,14 +121,14 @@ ruleDebugString_New sense rule =
             ])
     in
     case rule of
-        Is_New s r c -> String.join " " <| (subjectAndRestrictions s r) ++ [if sense then "is" else "is not", Types.complementDebugString c]
+        Is s r c -> String.join " " <| (subjectAndRestrictions s r) ++ [if sense then "is" else "is not", Types.complementDebugString c]
         Link l s r o -> String.join " " <| (subjectAndRestrictions s r) ++ [Types.linkingWordDebugString l, Types.subjectDebugString o]
 
-getRestrictions : Rule_New -> List Grammar.Restriction
+getRestrictions : Rule -> List Grammar.Restriction
 getRestrictions rule =
     []
 
-type alias PositiveAndNegativeRules = ( List Rule_New, List Rule_New )
+type alias PositiveAndNegativeRules = ( List Rule, List Rule )
 
 rulesFromSentence : Grammar.Sentence -> PositiveAndNegativeRules
 rulesFromSentence sentence =
@@ -145,7 +145,7 @@ rulesFromSentence sentence =
                                 complementFold : Grammar.Complement -> PositiveAndNegativeRules -> PositiveAndNegativeRules
                                 complementFold compl (( pos, neg ) as complAcc) =
                                     let
-                                        rule = Is_New subject sentence.restriction compl.word
+                                        rule = Is subject sentence.restriction compl.word
                                     in
                                     if compl.sense then
                                         ( rule :: pos, neg )
@@ -161,17 +161,17 @@ rulesFromSentence sentence =
     List.foldr subjectFold ( [], [] ) sentence.subject
 
 -- will need neighbouring cells in the end
-getApplicableStative_New : Rule_New -> Cell -> Object -> Maybe Types.Stative
-getApplicableStative_New rule cell object =
+getApplicableStative : Rule -> Cell -> Object -> Maybe Types.Stative
+getApplicableStative rule cell object =
     case ( Cell.getObjectWord object, rule ) of 
-            ( Cell.Instance objectNoun, Is_New (Types.NounSubject noun) restr (Types.Stative stative) ) ->
+            ( Cell.Instance objectNoun, Is (Types.NounSubject noun) restr (Types.Stative stative) ) ->
                 if Types.nounsEqual noun objectNoun then
                     Just stative
 
                 else
                     Nothing
 
-            ( Cell.Text _, Is_New (Types.Predicate Types.Text) [] (Types.Stative stative) ) ->
+            ( Cell.Text _, Is (Types.Predicate Types.Text) [] (Types.Stative stative) ) ->
                 Just stative
 
             _ ->
@@ -179,14 +179,14 @@ getApplicableStative_New rule cell object =
 
 getApplicableTransform rule cell object =
     case ( Cell.getObjectWord object, rule ) of 
-        ( Cell.Instance objectNoun, Is_New (Types.NounSubject noun) restr (Types.NounComplement obj) ) ->
+        ( Cell.Instance objectNoun, Is (Types.NounSubject noun) restr (Types.NounComplement obj) ) ->
             if Types.nounsEqual objectNoun noun then
                 Just obj
 
             else
                 Nothing
 
-        ( Cell.Text _, Is_New (Types.Predicate Types.Text) restr (Types.NounComplement obj) ) ->
+        ( Cell.Text _, Is (Types.Predicate Types.Text) restr (Types.NounComplement obj) ) ->
             Just obj
 
         _ ->

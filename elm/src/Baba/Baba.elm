@@ -42,10 +42,10 @@ import Baba.Util exposing (..)
 --    |> Maybe.map (LinkedGrid.toDebugString cellDebugString)
 --    |> Maybe.withDefault "!" 
 
-applyRules_New : Cell.Grid -> ( Rules.PositiveAndNegativeRules, Cell.Grid )
-applyRules_New grid =
+applyRules : Cell.Grid -> ( Rules.PositiveAndNegativeRules, Cell.Grid )
+applyRules grid =
     let
-        (( pos, neg ) as rules) = Rules.lookForRules_New grid
+        (( pos, neg ) as rules) = Rules.lookForRules grid
 
         foldFunc : ( Int, Int, Cell.Object ) -> Cell.Grid -> Cell.Grid
         foldFunc ( x, y, object ) gridToUpdate =
@@ -54,9 +54,9 @@ applyRules_New grid =
                     let
                         cell = LinkedGrid.getContents location
 
-                        ruleFoldFunc : Rules.Rule_New -> Int -> Int
+                        ruleFoldFunc : Rules.Rule -> Int -> Int
                         ruleFoldFunc rule flags =
-                            case Rules.getApplicableStative_New rule cell object of
+                            case Rules.getApplicableStative rule cell object of
                                 Just stative ->
                                     Bitwise.or flags (Types.flagFor stative)
 
@@ -108,7 +108,7 @@ turn forceTransform youDirection currentGrid =
     let
 
         -- rules
-        ( initialRules, gridWithUpToDateRules ) = applyRules_New currentGrid
+        ( initialRules, gridWithUpToDateRules ) = applyRules currentGrid
 
         -- you
         ( numberOfYousMoved, afterYousMoved ) =
@@ -151,9 +151,9 @@ turn forceTransform youDirection currentGrid =
     in
     if forceTransform || numberOfYousMoved + numberOfOthersMoved > 0 then
         afterAllMoves
-            |> applyRules_New |> Tuple.second
+            |> applyRules |> Tuple.second
             |> Destroy.doDestroys 
-            |> applyRules_New
+            |> applyRules
             |> curry2 transform
             |> Just
     else
@@ -305,9 +305,9 @@ update msg model =
                         --let
                         --    dummy = Debug.log "game objects" (countChars grid)
                         --in
-                        Rules.lookForRules_New grid
+                        Rules.lookForRules grid
                             |> Tuple.first
-                            |> List.map (Rules.ruleDebugString_New True)
+                            |> List.map (Rules.ruleDebugString True)
                             |> String.join "\n"
                     _ -> ""
             in

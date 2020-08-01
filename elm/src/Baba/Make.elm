@@ -1,7 +1,7 @@
 module Baba.Make exposing ( doTransformations )
 
 import Baba.Cell as Cell exposing ( Grid )
-import Baba.Rules exposing ( PositiveAndNegativeRules, Rule_New(..), getApplicableTransform )
+import Baba.Rules exposing ( PositiveAndNegativeRules, Rule(..), getApplicableTransform )
 import Baba.Types as Types
 
 import Baba.LinkedGrid as LinkedGrid
@@ -30,7 +30,7 @@ doTransformations rules grid =
                     in
                         LinkedGrid.setContents (updatedObject :: withoutObject) location
 
-                ruleFold : Rule_New -> Cell.Grid -> Cell.Grid
+                ruleFold : Rule -> Cell.Grid -> Cell.Grid
                 ruleFold rule ruleApplyGrid =
                     case LinkedGrid.at x y ruleApplyGrid of
                         Just location ->
