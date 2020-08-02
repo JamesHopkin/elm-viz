@@ -308,7 +308,7 @@ update msg model =
                         Rules.lookForRules grid
                             |> Tuple.first
                             |> List.map (Rules.ruleDebugString True)
-                            |> String.join "\n"
+                            |> String.join ", "
                     _ -> ""
             in
             { newModel

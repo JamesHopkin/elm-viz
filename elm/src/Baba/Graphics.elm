@@ -20,7 +20,7 @@ import Color
 
 import Baba.Cell as Cell
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction(..) )
-import Baba.Util as Util
+import Baba.Util exposing (..)
 
 animDurationMillis = 350
 
@@ -80,18 +80,43 @@ renderNoAnimSprite s scl x y alpha spriteSheet = Canvas.texture
     ]
     ( -s.width / 2.0, -s.height / 2.0 ) ((Texture.sprite s) spriteSheet)
 
+renderConnectedSprite location obj s =
+    let
+        sprite = case ( Cell.getObjectWord obj, location ) of
+            ( Cell.Instance noun, Just loc ) ->
+                let
+                    hasItemToInt m = case Maybe.map (LinkedGrid.getContents >> (Cell.cellHasNoun noun)) m of
+                        Just True -> 1
+                        _ -> 0
+
+                    xoffset = (LinkedGrid.above loc |> hasItemToInt) + (LinkedGrid.right loc |> hasItemToInt) * 2
+                    yoffset = (LinkedGrid.left loc |> hasItemToInt) + (LinkedGrid.below loc |> hasItemToInt) * 2
+
+                    --dummy = Debug.log "connected" [LinkedGrid.right loc |> maybeToInt, xoffset, yoffset, s.x, s.y, s.width, s.height]
+                in
+                { x = s.x + xoffset * s.width
+                , y = s.y + yoffset * s.height
+                , width = s.width, height = s.height
+                }
+
+            _ ->
+                s
+    in
+    renderNoAnimSprite sprite
+
 animatedSprites = Dict.fromList
     [ ( 'n', ( 0, 0, 8 ) ) -- link
     , ( 'a', ( 24 * 8, 0, 2 ) ) -- zelda
     ]
 
 instanceSprites = Dict.fromList
-    [ ( 'e',    { x = 96, y = 128, width = 24, height = 32 } ) -- fence
+    [ ( 'e',    { x = 232, y = 328, width = 16, height = 16 } ) -- fence
     , ( 'b',    { x = 72, y = 128, width = 24, height = 32 } ) -- water
     , ( 'c',    { x = 0, y = 128, width = 24, height = 32 } ) -- rock
     , ( 'd',    { x = 48, y = 128, width = 24, height = 32 } ) -- shrub
     , ( 'f',    { x = 24, y = 128, width = 24, height = 32 } ) -- key
     , ( 'g',    { x = 120, y = 128, width = 24, height = 32 } ) -- statue
+    , ( 'h',    { x = 96, y = 128, width = 24, height = 32 } ) -- sign
     ]
 
 textSprites = Dict.fromList
@@ -166,24 +191,28 @@ update msg model =
 
 font = Text.font { size = 24, family = "sans-serif" }
 
-renderObject spriteSheet obj delta animX animY alpha =
+-- spriteSheet obj delta animX animY alpha
+renderObject info =
     let
-        x = animX * cellDimension
-        y = animY * cellDimension + 5
+        x = info.animX * cellDimension
+        y = info.animY * cellDimension + 5
 
-        objChar = Cell.objectDebugChar obj
+        objChar = Cell.objectDebugChar info.obj
 
         animated = Dict.get objChar animatedSprites
     in
         case Dict.get objChar animatedSprites of
             Just animatedSprite ->
-                [Util.curry3 renderSprite animatedSprite 
-                    (Cell.getObjectDirection obj) delta x y alpha spriteSheet]
+                [curry3 renderSprite animatedSprite 
+                    (Cell.getObjectDirection info.obj) info.delta x y info.alpha info.spriteSheet]
 
             _ ->
                 case Dict.get objChar instanceSprites of
                     Just instanceSprite ->
-                        [renderNoAnimSprite instanceSprite 1.0 x y alpha spriteSheet]
+                        if objChar == 'e' then
+                            [renderConnectedSprite info.location info.obj instanceSprite 1.0 x y info.alpha info.spriteSheet]
+                        else
+                            [renderNoAnimSprite instanceSprite 1.0 x y info.alpha info.spriteSheet]
 
                     _ ->
                         case Dict.get objChar textSprites of
@@ -192,8 +221,8 @@ renderObject spriteSheet obj delta animX animY alpha =
                                     0 -> renderTextBG
                                     1 -> renderTextBG2
                                     _ -> renderMessageBox
-                                  ) x y alpha spriteSheet
-                                , renderNoAnimSprite sprite 0.6 x y alpha spriteSheet
+                                  ) x y info.alpha info.spriteSheet
+                                , renderNoAnimSprite sprite 0.6 x y info.alpha info.spriteSheet
                                 ]
 
                             _ ->
@@ -223,7 +252,15 @@ renderGrid spriteSheet dicts delta grid =
                             ( toFloat objX, toFloat objY, 0 )
 
             in
-            (renderObject spriteSheet obj animDelta animX animY 1.0) ++ acc
+            (renderObject
+                { spriteSheet = spriteSheet
+                , obj = obj
+                , delta = animDelta
+                , animX = animX
+                , animY = animY
+                , alpha = 1.0
+                , location = LinkedGrid.at objX objY grid
+                }) ++ acc
 
         --scl = 0.5 * (1 - delta) + 1.5 * delta
         --messageTest = Canvas.texture
@@ -291,7 +328,15 @@ view msg model =
                             Just ( _, destroyed ) ->
                                 destroyed
                                     |> Dict.toList
-                                    |> List.concatMap (\(_, ( x, y, obj )) -> renderObject texture obj 0 (toFloat x) (toFloat y) (1.0 - delta))
+                                    |> List.concatMap (\(_, ( x, y, obj )) -> renderObject
+                                        { spriteSheet = texture
+                                        , obj = obj
+                                        , delta = 0
+                                        , animX = (toFloat x)
+                                        , animY = (toFloat y)
+                                        , alpha = (1.0 - delta)
+                                        , location = LinkedGrid.at x y grid
+                                        })
 
                             _ ->
                                 []

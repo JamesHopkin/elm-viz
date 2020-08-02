@@ -29,7 +29,7 @@ allTests =
         , [ "→b",        "" ]
         ], Nothing )
 
-        -- expected fail until open/shut/stop thing works
+        -- open/shut/stop
     , ( [ [ "A=U&M→b ", "A=U&M" ]
         , [ "B=V&S", "B=V&S" ]
         ], Nothing )
@@ -53,6 +53,10 @@ allTests =
 
     , ( [ [ "B=C", "B=C" ]
         , [ "bbb", "ccc" ]
+        ], Nothing )
+
+    , ( [ [ "B=X", "B=X" ]
+        , [ "bcb", "BcB" ]
         ], Nothing )
 
     , ( [ [ "A=M",    "A=M" ]

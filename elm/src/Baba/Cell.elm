@@ -1,5 +1,5 @@
 module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveToCell,
-                            objectIs, objectIsAny, cellHas, cellHasAny, wordMatchesSubject, objectMatchesSubject,
+                            objectIs, objectIsAny, cellHas, cellHasAny, cellHasNoun, wordMatchesSubject, objectMatchesSubject,
                             firstText, firstComplement, firstSubject, firstStative, firstLinkingWord,
                             getObjectId, getObjectWord, getObjectDirection, getObjectFlags,
                             makeObject, makeDirectedObject, makeTextObject, charToText,
@@ -274,6 +274,18 @@ objectIsAny statives object = Types.isAny statives (getObjectFlags object)
 
 cellHas : Types.Stative -> Cell -> Bool
 cellHas stative cell = List.any (objectIs stative) cell
+
+cellHasNoun : Types.Noun -> Cell -> Bool
+cellHasNoun noun cell = 
+    let
+        isNoun obj = case getObjectWord obj of
+            Instance objNoun ->
+                Types.nounsEqual noun objNoun
+
+            _ ->
+                False
+    in
+    List.any isNoun cell
 
 cellHasAny : List Types.Stative -> Cell -> Bool
 cellHasAny statives cell = List.any (objectIsAny statives) cell
