@@ -279,7 +279,7 @@ initialModel str =
 
 replaceGrid str model = 
     let
-        grid = LinkedGrid.fromLists Cell.emptyCell 8 8
+        grid = LinkedGrid.fromLists Cell.emptyCell 16 16
             <| Cell.stringListToCells
             <| String.split "\n" str
     in

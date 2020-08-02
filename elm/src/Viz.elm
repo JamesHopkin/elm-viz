@@ -154,7 +154,16 @@ view model =
         [ Html.Attributes.rows 20, Html.Attributes.cols 20, onInput BabaInput ]
         []
       ]
+
+
     , pre [] [ text model.baba.debugStr ]
+    , table [ class "table" ]
+      [ tr [] [td [] [ text "a - Zelda"], td [] [ text "f - key"],     td [] [text "K - sink"], td [] [ text "R - weak"],   td [] [ text "W - win"]]
+      , tr [] [td [] [ text "b - water"], td [] [ text "g - statue"],  td [] [text "L - pull"], td [] [ text "S - stop"],   td [] [ text "X - you"]]
+      , tr [] [td [] [ text "c - rock"],  td [] [ text "h - Link"],    td [] [text "M - move"], td [] [ text "T - defeat"], td [] [ text "Y - text"]]
+      , tr [] [td [] [ text "d - shrub"], td [] [],                    td [] [text "O - hot"],  td [] [ text "U - open"],   td [] [ text "Z - melt"]]
+      , tr [] [td [] [ text "e - fence"], td [] [],                    td [] [text "P - push"], td [] [ text "V - shut"]]
+      ]
     , div [] (List.map text Baba.BabaTest.testResults)
     ]
     

@@ -9,6 +9,7 @@ module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveT
 
                             ObjectKind(..) ) -- may encapsulate further
 
+import Dict exposing ( Dict )
 import List.Extra
 
 import Baba.Types as Types
@@ -422,89 +423,61 @@ cellDebugString cell =
                     _ -> "· "
 
 charToText : Char -> Types.Text
-charToText c = case c of 
-                    '<' ->
-                        Types.LinkingWord Types.Has
-
-                    '=' ->
-                        Types.LinkingWord Types.Is
-
-                    '&' ->
-                        Types.Conjunction Types.And
-
-                    '!' ->
-                        Types.Conjunction Types.Not
-
-                    '_' ->
-                        Types.Restrictive Types.On
-
-                    'K' ->
-                        Types.StativeText Types.Sink
-
-                    'L' ->
-                        Types.StativeText Types.Pull
-
-                    'M' ->
-                        Types.StativeText Types.Move
-
-                    'O' ->
-                        Types.StativeText Types.Hot
-
-                    'P' ->
-                        Types.StativeText Types.Push
-
-                    'R' ->
-                        Types.StativeText Types.Weak
-
-                    'S' ->
-                        Types.StativeText Types.Stop
-
-                    'T' ->
-                        Types.StativeText Types.Defeat
-
-                    'U' ->
-                        Types.StativeText Types.Open
-
-                    'V' ->
-                        Types.StativeText Types.Shut
-
-                    'W' ->
-                        Types.StativeText Types.Win
-
-                    'Y' ->
-                        Types.StativeText Types.You
-
-                    'X' ->
-                        Types.PredicateText Types.Text
-
-                    'Z' ->
-                        Types.StativeText Types.Melt
+charToText c = case c of
+                    '<' -> Types.LinkingWord Types.Has
+                    '=' -> Types.LinkingWord Types.Is
+                    '&' -> Types.Conjunction Types.And
+                    '!' -> Types.Conjunction Types.Not
+                    '_' -> Types.Restrictive Types.On
+                    'K' -> Types.StativeText Types.Sink
+                    'L' -> Types.StativeText Types.Pull
+                    'M' -> Types.StativeText Types.Move
+                    'O' -> Types.StativeText Types.Hot
+                    'P' -> Types.StativeText Types.Push
+                    'R' -> Types.StativeText Types.Weak
+                    'S' -> Types.StativeText Types.Stop
+                    'T' -> Types.StativeText Types.Defeat
+                    'U' -> Types.StativeText Types.Open
+                    'V' -> Types.StativeText Types.Shut
+                    'W' -> Types.StativeText Types.Win
+                    'Y' -> Types.StativeText Types.You
+                    'X' -> Types.PredicateText Types.Text
+                    'Z' -> Types.StativeText Types.Melt
 
                     _ ->
                         Types.NounText (Types.Noun (Char.toLower c))
 
+nextIndex : Char -> Dict Char Int -> ( Int, Dict Char Int )
+nextIndex c indices =
+    let
+        index = Maybe.withDefault 0 (Dict.get c indices) + 1
+    in
+    ( index + Char.toCode c * 1000, Dict.insert c index indices )
 
 stringListToCells : List String -> List (List Cell)
 stringListToCells rows =
     let
-        makeCell : Char -> ( Int, List Cell ) -> ( Int, List Cell )
-        makeCell c ( index, outRow ) =
+        makeCell : Char -> ( Dict Char Int, List Cell ) -> ( Dict Char Int, List Cell )
+        makeCell c ( indices, outRow ) =
+            let
+                ( id, newIndices ) = nextIndex c indices
+            in
             if c == ' ' then
-                ( index, [] :: outRow )
+                ( newIndices, [] :: outRow )
 
             -- multi object test
             else if c == '@' then
-                ( index + 1, 
-                    [ makeObject index 'b'
-                    , makeObject (index + 100000) 'c'
+                ( newIndices, 
+                    [ makeObject id 'b'
+                    , makeObject (id + 100000) 'c'
                     ] :: outRow
                 )
 
             else if c == '£' then
-                ( index + 1, 
-                    [ makeObject index 'a'
-                    , makeObject (index + 100000) 'b'
-                    , makeObject (index + 200000) 'c'
+                ( newIndices, 
+                    [ makeObject id 'a'
+                    , makeObject (id + 100000) 'b'
+                    , makeObject (id + 200000) 'c'
                     ] :: outRow
                 )
 
@@ -512,32 +485,32 @@ stringListToCells rows =
                 let newObject = case c of
 
                         '↑' ->
-                            makeDirectedObject index 'a' Up
+                            makeDirectedObject id 'a' Up
 
                         '→' ->
-                            makeDirectedObject index 'a' Right
+                            makeDirectedObject id 'a' Right
 
                         '↓' ->
-                            makeDirectedObject index 'a' Down
+                            makeDirectedObject id 'a' Down
 
                         '←' ->
-                            makeDirectedObject index 'a' Left
+                            makeDirectedObject id 'a' Left
 
                         _ ->
                             if Char.isUpper c || List.member c (String.toList "=<&!_") then
-                                makeTextObject index (charToText c)
+                                makeTextObject id (charToText c)
                             else
-                                makeObject index c
+                                makeObject id c
                 in
-                ( index + 1, [newObject] :: outRow )
+                ( newIndices, [newObject] :: outRow )
 
-        makeRow : String -> ( Int, List (List Cell) ) -> ( Int, List (List Cell) )
-        makeRow s ( initialIndex, outRows ) =
+        makeRow : String -> ( Dict Char Int, List (List Cell) ) -> ( Dict Char Int, List (List Cell) )
+        makeRow s ( initialIndices, outRows ) =
                 s
                     |> String.toList
-                    |> List.foldr makeCell ( initialIndex, [] )
+                    |> List.foldr makeCell ( initialIndices, [] )
                     |> \( index, cells ) -> ( index, cells :: outRows)
 
     in
         --List.foldr (String.toList >> (List.foldr makeCell) >> Tuple.second) ( 0, [] ) rows
-        List.foldr makeRow ( 0, [] ) rows |> Tuple.second
+        List.foldr makeRow ( Dict.empty, [] ) rows |> Tuple.second
