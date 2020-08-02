@@ -61,7 +61,7 @@ type Stative
     | Defeat
     | Win
     | Open
-    | Closed
+    | Shut  
     | Float_
     | Hot
     | Melt
@@ -78,7 +78,7 @@ stativeDebugString stative = case stative of
     Defeat -> "defeat"
     Win -> "win"
     Open -> "open"
-    Closed -> "closed"
+    Shut   -> "shut"
     Float_ -> "float"
     Hot -> "hot"
     Melt -> "melt"
@@ -159,7 +159,7 @@ flagFor v = case v of
     Defeat  -> 0x0020
     Win     -> 0x0040
     Open    -> 0x0080
-    Closed  -> 0x0100
+    Shut    -> 0x0100
     Float_  -> 0x0200
     Hot     -> 0x0400
     Melt    -> 0x0800

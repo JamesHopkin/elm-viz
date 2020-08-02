@@ -18,7 +18,7 @@ unilateralDestructionMask = Types.flagsFor
     ]
 
 mutualDestructionMask = Types.flagsFor
-    [ Types.Open, Types.Closed
+    [ Types.Open, Types.Shut
     , Types.Sink
     ]
 
@@ -40,8 +40,8 @@ doMutualDestroys cell =
 
     else
         -- open/closed
-        if and_ (Cell.cellHas Types.Open) (Cell.cellHas Types.Closed) cell then
-            List.filter (\obj -> not (Cell.objectIsAny [Types.Open, Types.Closed] obj)) cell
+        if and_ (Cell.cellHas Types.Open) (Cell.cellHas Types.Shut) cell then
+            List.filter (\obj -> not (Cell.objectIsAny [Types.Open, Types.Shut] obj)) cell
                 |> Just
 
         else

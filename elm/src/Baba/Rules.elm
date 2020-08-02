@@ -1,4 +1,4 @@
-module Baba.Rules exposing ( getTransform,
+module Baba.Rules exposing ( isTransform,
                             rulesFromSentence, ruleDebugString, PositiveAndNegativeRules,
                             lookForRules, getApplicableStative, getApplicableTransform,
                             Rule )
@@ -100,14 +100,6 @@ lookForRules grid =
 
         _ -> ( [], [] )
 
-getTransform rule = case rule of
-    Is subj restrictions (Types.NounComplement (Types.Noun obj)) ->
-        Just ( subj, restrictions, obj )
-
-    _ ->
-        Nothing
-
-
 type Rule
     = Is Types.Subject (List Grammar.Restriction) Types.Complement
     | Link Types.LinkingWord Types.Subject (List Grammar.Restriction) Types.Subject
@@ -125,8 +117,12 @@ ruleDebugString sense rule =
         Link l s r o -> String.join " " <| (subjectAndRestrictions s r) ++ [Types.linkingWordDebugString l, Types.subjectDebugString o]
 
 getRestrictions : Rule -> List Grammar.Restriction
-getRestrictions rule =
-    []
+getRestrictions rule = case rule of
+    Is _ restrictions _
+        -> restrictions
+
+    Link _ _ restrictions _
+        -> restrictions
 
 type alias PositiveAndNegativeRules = ( List Rule, List Rule )
 
@@ -160,34 +156,71 @@ rulesFromSentence sentence =
     in
     List.foldr subjectFold ( [], [] ) sentence.subject
 
--- will need neighbouring cells in the end
-getApplicableStative : Rule -> Cell -> Object -> Maybe Types.Stative
-getApplicableStative rule cell object =
-    case ( Cell.getObjectWord object, rule ) of 
-            ( Cell.Instance objectNoun, Is (Types.NounSubject noun) restr (Types.Stative stative) ) ->
-                if Types.nounsEqual noun objectNoun then
-                    Just stative
+passesRestriction : Grammar.Restriction -> Cell -> Bool
+passesRestriction restriction cell =
+    case restriction.word of
+        Types.On ->
+            case restriction.noun of
+                Types.Predicate Types.Empty ->
+                    List.length cell == 1
 
-                else
-                    Nothing
+                _ ->
+                    List.any (\obj -> Cell.objectMatchesSubject obj restriction.noun) cell
+        _ ->
+            -- only handling On so far
+            True
 
-            ( Cell.Text _, Is (Types.Predicate Types.Text) [] (Types.Stative stative) ) ->
-                Just stative
-
-            _ ->
-                Nothing
-
-getApplicableTransform rule cell object =
-    case ( Cell.getObjectWord object, rule ) of 
-        ( Cell.Instance objectNoun, Is (Types.NounSubject noun) restr (Types.NounComplement obj) ) ->
-            if Types.nounsEqual objectNoun noun then
-                Just obj
+checkRestrictions restrictions cell result =
+    let
+        foldFunc r acc =
+            if isJust acc && passesRestriction r cell then
+                acc
 
             else
                 Nothing
+    in
+    List.foldr foldFunc (Just result) restrictions
 
-        ( Cell.Text _, Is (Types.Predicate Types.Text) restr (Types.NounComplement obj) ) ->
-            Just obj
+-- will need neighbouring cells in the end
+getApplicableStative : Rule -> Cell -> Object -> Maybe Types.Stative
+getApplicableStative rule cell object =
+    case rule of
+        Is subject restrictions (Types.Stative stative) ->
+            if wordMatchesSubject (Cell.getObjectWord object) subject then
+                checkRestrictions restrictions cell stative
+            else
+                Nothing
+
+        _ ->
+            Nothing
+
+isTransform rule = case rule of
+    Is _ _ (Types.Stative _) ->
+        False
+
+    Is _ _ _ ->
+        True
+
+    _ ->
+        False
+
+getApplicableTransform : Rule -> Cell -> Object -> Maybe Cell.ObjectKind
+getApplicableTransform rule cell object =
+    case rule of
+        Is subject restrictions complement ->
+            if wordMatchesSubject (Cell.getObjectWord object) subject then
+                case ( subject, complement ) of
+                    ( _, Types.NounComplement noun ) ->
+                        checkRestrictions restrictions cell (Cell.Instance noun)
+
+                    ( Types.NounSubject noun, Types.PredicateComplement Types.Text ) ->
+                        checkRestrictions restrictions cell <| Cell.Text <| Types.NounText noun
+
+                    _ ->
+                        Nothing
+
+            else
+                Nothing
 
         _ ->
             Nothing

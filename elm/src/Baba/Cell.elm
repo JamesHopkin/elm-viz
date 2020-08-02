@@ -1,5 +1,5 @@
 module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveToCell,
-                            objectIs, objectIsAny, cellHas, cellHasAny,
+                            objectIs, objectIsAny, cellHas, cellHasAny, wordMatchesSubject, objectMatchesSubject,
                             firstText, firstComplement, firstSubject, firstStative, firstLinkingWord,
                             getObjectId, getObjectWord, getObjectDirection, getObjectFlags,
                             makeObject, makeDirectedObject, makeTextObject, charToText,
@@ -32,6 +32,28 @@ type alias ObjectState =
     , flags: Int
     , lastMovedTick: Int
     }
+
+wordMatchesSubject : ObjectKind -> Types.Subject -> Bool
+wordMatchesSubject word subject =
+    --let
+    --    comp = Debug.log "compare" [String.fromChar <| objectKindDebugChar word, Types.subjectDebugString subject]
+    --in
+    case ( word, subject ) of
+        ( Instance noun, Types.NounSubject subjectNoun ) ->
+            --let
+            --    dummy = Debug.log "compare nouns" [noun, subjectNoun]
+            --in
+            Types.nounsEqual noun subjectNoun
+
+        ( Text _, Types.Predicate Types.Text ) ->
+            True
+
+        _ ->
+            False
+
+objectMatchesSubject object = case object of
+    Object _ state -> wordMatchesSubject state.word
+
 
 mismatch : Grid -> Grid -> List ( Int, Int )
 mismatch a b =
@@ -334,8 +356,11 @@ showAllContents = False
 showDirections = False
 
 objectDebugChar : Object -> Char
-objectDebugChar object =
-    case getObjectWord object of 
+objectDebugChar object = objectKindDebugChar (getObjectWord object)
+
+objectKindDebugChar : ObjectKind -> Char
+objectKindDebugChar kind =
+    case kind of 
         Instance (Types.Noun c) -> c
         Text (Types.NounText (Types.Noun c)) -> Char.toUpper c
         Text (Types.StativeText stative) -> 
@@ -348,7 +373,7 @@ objectDebugChar object =
                 Types.Push -> 'P'
                 Types.Defeat -> 'T'
                 Types.Open -> 'U'
-                Types.Closed -> 'V'
+                Types.Shut -> 'V'
                 Types.Win -> 'W'
                 Types.You -> 'Y'
                 Types.Melt -> 'Z'
@@ -441,7 +466,7 @@ charToText c = case c of
                         Types.StativeText Types.Open
 
                     'V' ->
-                        Types.StativeText Types.Closed
+                        Types.StativeText Types.Shut
 
                     'W' ->
                         Types.StativeText Types.Win

@@ -76,14 +76,25 @@ push axisWithMoveAtOrigin =
                         followPushes axis |> Maybe.map (doPush pushIds)
 
                     -- found stop, so nothing moves
-                    else if cellHasAny [Types.Pull, Types.Stop] contents then
+                    else if cellHasAny [Types.Pull, Types.Stop] contents
+
+                        -- special case to allow keys to open doors
+                        && not (cellHas Types.Shut contents && (cellHas Types.Open <| LinkedGrid.axisGet fromAxis)) then
+
+                        let
+                            dummy1 = Debug.log "here1" []
+                        in
                         Nothing
 
                     else
                         Just fromAxis
 
                 -- treat boundary as stop
-                _ -> Nothing
+                _ ->
+                    let
+                        dummy2 = Debug.log "here2" []
+                    in
+                    Nothing
 
     in
     followPushes axisWithMoveAtOrigin

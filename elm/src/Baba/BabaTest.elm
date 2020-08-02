@@ -20,17 +20,22 @@ import Time
 
 allTests = 
         -- pull multiple
-    [ ( [ [ "B=LC=LA=M",  "B=LC=LA=M" ]
+    [ ( [ [ "B&C=LA=M",  "B&C=LA=M" ]
         , [ "@@@→",       " @@@→" ]
         ], Nothing )
 
-        -- open/closed
+        -- open/shut
     , ( [ [ "A=MA=UB=V", "A=MA=UB=V" ]
         , [ "→b",        "" ]
         ], Nothing )
 
+        -- expected fail until open/shut/stop thing works
+    , ( [ [ "A=U&M→b ", "A=U&M" ]
+        , [ "B=V&S", "B=V&S" ]
+        ], Nothing )
+
         -- hot/melt
-    , ( [ [ "A=MA=OB=Z", "A=MA=OB=Z" ]
+    , ( [ [ "A=M&OB=Z", "A=M&OB=Z" ]
         , [ "→b",        " →" ]
         ], Nothing )
 

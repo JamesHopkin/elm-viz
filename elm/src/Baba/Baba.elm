@@ -140,7 +140,7 @@ turn forceTransform youDirection currentGrid =
 
         transform ( pos, neg ) grid =
             let
-                justTransforms = List.filter (\r -> isJust (Rules.getTransform r))
+                justTransforms = List.filter Rules.isTransform
                 transformRules = ( justTransforms pos, justTransforms neg )
             in
             if List.isEmpty (Tuple.first transformRules) then
@@ -279,7 +279,7 @@ initialModel str =
 
 replaceGrid str model = 
     let
-        grid = LinkedGrid.fromLists Cell.emptyCell 20 20
+        grid = LinkedGrid.fromLists Cell.emptyCell 8 8
             <| Cell.stringListToCells
             <| String.split "\n" str
     in

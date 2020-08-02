@@ -91,6 +91,7 @@ instanceSprites = Dict.fromList
     , ( 'c',    { x = 0, y = 128, width = 24, height = 32 } ) -- rock
     , ( 'd',    { x = 48, y = 128, width = 24, height = 32 } ) -- shrub
     , ( 'f',    { x = 24, y = 128, width = 24, height = 32 } ) -- key
+    , ( 'g',    { x = 120, y = 128, width = 24, height = 32 } ) -- statue
     ]
 
 textSprites = Dict.fromList
@@ -112,8 +113,8 @@ textSprites = Dict.fromList
     , ( 'Y',    { bg = 2, sprite = { x = 120, y = 208, width = 21, height = 16 } } ) -- you
     ]
 
-renderTextBG = renderNoAnimSprite { x = 40, y = 160, width = 18, height = 14 } 1.0
-renderTextBG2 = renderNoAnimSprite { x = 86, y = 160, width = 18, height = 14 } 1.0
+renderTextBG = renderNoAnimSprite { x = 40, y = 160, width = 16, height = 16 } 1.0
+renderTextBG2 = renderNoAnimSprite { x = 88, y = 160, width = 16, height = 16 } 1.0
 
 
 renderMessageBox = renderNoAnimSprite { x = 0, y = 160, width = 40, height = 32 } 0.5

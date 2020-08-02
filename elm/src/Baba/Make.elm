@@ -19,14 +19,14 @@ doTransformations rules grid =
         objFold : ( Int, Int, Cell.Object ) -> Cell.Grid -> Cell.Grid
         objFold ( x, y, object ) objFoldGrid =
             let
-                updateCell : Types.Noun -> Cell.Location -> Cell.Location
-                updateCell newNoun location =
+                updateCell : Cell.ObjectKind -> Cell.Location -> Cell.Location
+                updateCell kind location =
                     let
                         id = Cell.getObjectId object
                         withoutObject = List.filter (Cell.getObjectId >> (/=) id)
                             <| LinkedGrid.getContents location
 
-                        updatedObject = Cell.setObjectWordAndFlags (Cell.Instance newNoun) 0 object
+                        updatedObject = Cell.setObjectWordAndFlags kind 0 object
                     in
                         LinkedGrid.setContents (updatedObject :: withoutObject) location
 
@@ -39,8 +39,9 @@ doTransformations rules grid =
                             in
 
                             case getApplicableTransform rule cell object of
-                                Just newNoun ->
-                                    LinkedGrid.gridFromLocation (updateCell newNoun location)
+                                Just kind ->
+                                    updateCell kind location
+                                        |> LinkedGrid.gridFromLocation
 
                                 _ ->
                                     ruleApplyGrid
