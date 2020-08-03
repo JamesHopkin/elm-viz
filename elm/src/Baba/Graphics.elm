@@ -120,9 +120,23 @@ instanceSprites = Dict.fromList
 getInstanceSprite code = Dict.get code instanceSprites
 
 
-getTextSprite code =
-    Types.getTypeInfoByCode code
-        |> Maybe.map (\info -> { bg = 0, sprite = info.glyph })
+getTextSprite code = case Types.getTypeInfoByCode code of
+    Just info ->
+        let
+
+            bg =
+                case info.text of
+                    Types.StativeText _ -> 
+                        2
+
+                    _ ->
+                        0
+        in
+    
+        Just { bg = bg, sprite = info.glyph }
+
+    _ ->
+        Nothing
 
 renderTextBG = renderNoAnimSprite { x = 40, y = 160, width = 16, height = 16 } 1.0
 renderTextBG2 = renderNoAnimSprite { x = 88, y = 160, width = 16, height = 16 } 1.0

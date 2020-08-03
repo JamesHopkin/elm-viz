@@ -28,13 +28,13 @@
     [ "Z", "Melt",    "StativeText Melt" ],
 
     [ "a", "Zelda", null ],
-    [ "b", "water", null ],
-    [ "c", "rock", null ],
-    [ "d", "shrub", null ],
-    [ "e", "fence", null ],
-    [ "f", "key", null ],
-    [ "g", "statue", null ],
-    [ "h", "sign", null ],
+    [ "b", "Water", null ],
+    [ "c", "Rock", null ],
+    [ "d", "Shrub", null ],
+    [ "e", "Fence", null ],
+    [ "f", "Key", null ],
+    [ "g", "Statue", null ],
+    [ "h", "Sign", null ],
     [ "i", "Link", null ]
 
 ]
