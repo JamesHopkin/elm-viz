@@ -1,6 +1,7 @@
 module Baba.Types exposing (..)
 
 import Bitwise
+import Dict as Dict
 
 type Noun = Noun Char
 
@@ -51,7 +52,7 @@ predicateDebugString predicate = case predicate of
     Empty -> "empty"
     Text -> "text"
 
--- verb also doesn't apply to all, but it's close
+-- verb also doesn"t apply to all, but it"s close
 type Stative
     = Push
     | Pull
@@ -66,7 +67,9 @@ type Stative
     | Hot
     | Melt
     | Sink
+    | Shift
     | Weak
+    | Tele
     | You
 
 stativeDebugString stative = case stative of
@@ -78,7 +81,7 @@ stativeDebugString stative = case stative of
     Defeat -> "defeat"
     Win -> "win"
     Open -> "open"
-    Shut   -> "shut"
+    Shut -> "shut"
     Float_ -> "float"
     Hot -> "hot"
     Melt -> "melt"
@@ -151,22 +154,32 @@ isAny v n = Bitwise.and (flagsFor v) n /= 0
 
 flagFor : Stative -> Int
 flagFor v = case v of
-    Push    -> 0x0001
-    Pull    -> 0x0002
-    Move    -> 0x0004
-    More    -> 0x0008
-    Stop    -> 0x0010
-    Defeat  -> 0x0020
-    Win     -> 0x0040
-    Open    -> 0x0080
-    Shut    -> 0x0100
-    Float_  -> 0x0200
-    Hot     -> 0x0400
-    Melt    -> 0x0800
-    Sink    -> 0x1000
-    Weak    -> 0x2000
-    _       -> 0x4000
-
+    Push    -> 0x000001
+    Pull    -> 0x000002
+    Move    -> 0x000004
+    More    -> 0x000008
+    Stop    -> 0x000010
+    Defeat  -> 0x000020
+    Win     -> 0x000040
+    Open    -> 0x000080
+    Shut    -> 0x000100
+    Float_  -> 0x000200
+    Hot     -> 0x000400
+    Melt    -> 0x000800
+    Sink    -> 0x001000
+    Shift   -> 0x002000
+    Weak    -> 0x004000
+    Tele    -> 0x008000
+    You     -> 0x010000
 
 flagsFor : List Stative -> Int
 flagsFor verbs = List.foldr (flagFor >> Bitwise.or) 0 verbs
+
+
+getTypeInfoByCode = Dict.fromList
+    [ ( 'A', {text = PredicateText All, word = "All", glyph = {x = 0, y = 0, width = 7, height = 16}} )
+    , ( 'B', {text = PredicateText Empty, word = "Empty", glyph = {x = 0, y = 0, width = 7, height = 16}} )
+    , ( 'P', {text = StativeText Push, word = "Push", glyph = {x = 0, y = 0, width = 7, height = 16}} )
+
+    , ( 'h', {text = NounText (Noun 'h'), word = "sign", glyph = {x = 0, y = 0, width = 7, height = 16}} )
+    ]

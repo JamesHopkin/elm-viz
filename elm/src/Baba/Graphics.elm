@@ -111,7 +111,7 @@ animatedSprites = Dict.fromList
 
 instanceSprites = Dict.fromList
     [ ( 'e',    { x = 232, y = 328, width = 16, height = 16 } ) -- fence
-    , ( 'b',    { x = 72, y = 128, width = 24, height = 32 } ) -- water
+    , ( 'b',    { x = 232, y = 256, width = 16, height = 16 } ) -- water
     , ( 'c',    { x = 0, y = 128, width = 24, height = 32 } ) -- rock
     , ( 'd',    { x = 48, y = 128, width = 24, height = 32 } ) -- shrub
     , ( 'f',    { x = 24, y = 128, width = 24, height = 32 } ) -- key
@@ -209,7 +209,7 @@ renderObject info =
             _ ->
                 case Dict.get objChar instanceSprites of
                     Just instanceSprite ->
-                        if objChar == 'e' then
+                        if objChar == 'e' || objChar == 'b' then
                             [renderConnectedSprite info.location info.obj instanceSprite 1.0 x y info.alpha info.spriteSheet]
                         else
                             [renderNoAnimSprite instanceSprite 1.0 x y info.alpha info.spriteSheet]
