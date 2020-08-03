@@ -14,7 +14,7 @@ ATLAS_FILENAME = 'test.png'
 with open(PATH, "r") as read_file:
 	data = json.load(read_file)
 
-source = Image.open(os.path.join(ROOT, 'alphabet.png'))
+source = Image.open('scripts/alphabet.png')
 target = Image.new('RGBA', ATLAS_SIZE)
 
 ##returns alphabet index of letter
@@ -62,20 +62,10 @@ for word in words:
 	data_out.append([x-word_w,y,word_w,16]) #x,y,w,h
 	x+=8 #space between words
 
-##testing it works
-# r = random.randint(0,35)
-# test = data_out[r]
-# clip = (Image.open(os.path.join(ROOT, 'test2.png'))).crop((test[0], test[1], test[0]+test[2], test[1] + test[3]))
-# print(test)
-# print(data[r])
-# target.paste(clip, (0, 0))
 
-#'''( 'A', {text = PredicateText All, word = 'All', glyph = {x = 0, y = 0, width = 7, height = 16}} )'''
-#FROM
-#[ "^", "all", "PredicateText All" ],
 data_out_out = []
 for (i,j) in zip(data, data_out):
-	x = "    ( '" + i[0] + "', " 
+	x = "    ( '" + i[0].upper() + "', " 
 	if i[2]:
 		x += "{text = "+ i[2] + ', word = "' + i[1] 
 	else:
