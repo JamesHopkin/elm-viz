@@ -25,7 +25,7 @@ lookForRulesOnAxis : Axis -> PositiveAndNegativeRules
 lookForRulesOnAxis startingAxis = 
     let
         impl : Maybe Axis -> List Types.Text -> PositiveAndNegativeRules -> PositiveAndNegativeRules
-        impl axis current (( pos, neg ) as complete) =
+        impl axis current complete =
             let
                 getText a = firstText (LinkedGrid.axisGet a)
                 next = Maybe.andThen (LinkedGrid.axisForward 1) axis
@@ -108,13 +108,13 @@ ruleDebugString sense rule =
     let
 
         subjectAndRestrictions s r = 
-            [Types.subjectDebugString s] ++ (if List.length r == 0 then [] else [
+            Types.subjectDebugString s :: (if List.length r == 0 then [] else [
                 String.join " and " (List.map Grammar.restrictionDebugString r)
             ])
     in
     case rule of
-        Is s r c -> String.join " " <| (subjectAndRestrictions s r) ++ [if sense then "is" else "is not", Types.complementDebugString c]
-        Link l s r o -> String.join " " <| (subjectAndRestrictions s r) ++ [Types.linkingWordDebugString l, Types.subjectDebugString o]
+        Is s r c -> String.join " " <| subjectAndRestrictions s r ++ [if sense then "is" else "is not", Types.complementDebugString c]
+        Link l s r o -> String.join " " <| subjectAndRestrictions s r ++ [Types.linkingWordDebugString l, Types.subjectDebugString o]
 
 getRestrictions : Rule -> List Grammar.Restriction
 getRestrictions rule = case rule of
@@ -139,7 +139,7 @@ rulesFromSentence sentence =
                         Grammar.Is complements ->
                             let
                                 complementFold : Grammar.Complement -> PositiveAndNegativeRules -> PositiveAndNegativeRules
-                                complementFold compl (( pos, neg ) as complAcc) =
+                                complementFold compl ( pos, neg ) =
                                     let
                                         rule = Is subject sentence.restriction compl.word
                                     in

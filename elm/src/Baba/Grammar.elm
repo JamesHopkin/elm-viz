@@ -1,7 +1,7 @@
 module Baba.Grammar exposing (..)
 
 import Baba.Types as Types exposing
-    ( textAsLinkingWord, textAsSubject, textAsComplement
+    ( textAsSubject, textAsComplement
     )
 
 type alias Complement =
@@ -23,7 +23,7 @@ type alias Restriction =
 
 restrictionDebugString restr =
     let
-        str = (Types.restrictiveDebugString restr.word) ++ " " ++ (Types.subjectDebugString restr.noun)
+        str = Types.restrictiveDebugString restr.word ++ " " ++ Types.subjectDebugString restr.noun
     in
     if restr.sense then str else "not " ++ str
 

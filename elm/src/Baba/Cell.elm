@@ -10,7 +10,6 @@ module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveT
                             ObjectKind(..) ) -- may encapsulate further
 
 import Dict exposing ( Dict )
-import List.Extra
 
 import Baba.Types as Types
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
@@ -430,8 +429,8 @@ cellDebugString cell =
 
             else
                 case chars of
-                    first :: second :: _ -> (toString first) ++ (toString second)
-                    first :: _           -> (toString first) ++ " "
+                    first :: second :: _ -> toString first ++ toString second
+                    first :: _           -> toString first ++ " "
                     _ -> "· "
 
 charToText : Char -> Types.Text

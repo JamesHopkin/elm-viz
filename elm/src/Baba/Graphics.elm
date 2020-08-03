@@ -1,13 +1,12 @@
 module Baba.Graphics exposing ( Model, Msg, init, update, view, subscription,
                                 setGrid )
 
-import Basics exposing ( toFloat, floor, round )
+import Basics exposing ( toFloat, floor )
 
 import Browser.Events
 import Dict
 
 import Html exposing ( div, text )
-import Html.Attributes as Attrs
 
 import Time exposing ( Posix )
 
@@ -29,15 +28,8 @@ spritesLoader msg = loadFromImageUrl "images/blah.png" (msg << TextureLoaded)
 cellDimensionInt = 16
 cellDimension = toFloat cellDimensionInt
 
-spriteWidthInt = 24
 spriteWidth = 24.0
 halfSpriteWidth = spriteWidth / 2.0
-
-makeSprite x y reflect =
-    { sprite = Texture.sprite { x = x, y = y, width = spriteWidth, height = 29 }
-    , reflect = reflect
-    }
-
 
 floorf = floor >> toFloat
 
@@ -74,11 +66,11 @@ renderSprite baseX baseY numFrames direction =
 
 renderNoAnimSprite s scl x y alpha spriteSheet = Canvas.texture
     [gt, Canvas.Settings.Advanced.alpha alpha
-    , transform ([translate x y] ++ (if scl == 1.0 then 
+    , transform (translate x y :: (if scl == 1.0 then 
         []
       else [scale scl scl]))
     ]
-    ( -s.width / 2.0, -s.height / 2.0 ) ((Texture.sprite s) spriteSheet)
+    ( -s.width / 2.0, -s.height / 2.0 ) (Texture.sprite s spriteSheet)
 
 renderConnectedSprite location obj s =
     let
@@ -199,7 +191,6 @@ renderObject info =
 
         objChar = Cell.objectDebugChar info.obj
 
-        animated = Dict.get objChar animatedSprites
     in
         case Dict.get objChar animatedSprites of
             Just animatedSprite ->
@@ -252,7 +243,7 @@ renderGrid spriteSheet dicts delta grid =
                             ( toFloat objX, toFloat objY, 0 )
 
             in
-            (renderObject
+            renderObject
                 { spriteSheet = spriteSheet
                 , obj = obj
                 , delta = animDelta
@@ -260,7 +251,7 @@ renderGrid spriteSheet dicts delta grid =
                 , animY = animY
                 , alpha = 1.0
                 , location = LinkedGrid.at objX objY grid
-                }) ++ acc
+                } ++ acc
 
         --scl = 0.5 * (1 - delta) + 1.5 * delta
         --messageTest = Canvas.texture
@@ -316,10 +307,10 @@ view msg model =
               { width = canvasWidth, height = canvasHeight
               , textures = [spritesLoader msg]
               } [] 
-              ([ Canvas.shapes  
+              ( Canvas.shapes  
                     [Canvas.Settings.fill (Color.rgb (74.0 / 255.0) (156.0 / 255.0) (74.0 / 255.0))]
                     [Canvas.rect (0, 0) (toFloat canvasWidth) (toFloat canvasHeight)]
-              ] ++ 
+                :: 
                 (case model.texture of
                     Just texture ->
                         renderGrid texture objectsInPreviousGrid delta grid
@@ -332,9 +323,9 @@ view msg model =
                                         { spriteSheet = texture
                                         , obj = obj
                                         , delta = 0
-                                        , animX = (toFloat x)
-                                        , animY = (toFloat y)
-                                        , alpha = (1.0 - delta)
+                                        , animX = toFloat x
+                                        , animY = toFloat y
+                                        , alpha = 1.0 - delta
                                         , location = LinkedGrid.at x y grid
                                         })
 

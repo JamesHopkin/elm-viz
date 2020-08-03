@@ -1,11 +1,9 @@
 port module Viz exposing ( main )
 
 import Browser
-import Html exposing ( div, h3, pre, text, table, td, tr, textarea )
-import Html.Attributes exposing ( class, style, attribute )
+import Html exposing ( div, pre, text, table, td, tr, textarea )
+import Html.Attributes exposing ( class )
 import Html.Events exposing ( onInput )
-
-import Time
 
 import Json.Encode as Encode
 import Json.Decode as Decode

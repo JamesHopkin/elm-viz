@@ -81,9 +81,6 @@ push axisWithMoveAtOrigin =
                         -- special case to allow keys to open doors
                         && not (cellHas Types.Shut contents && (cellHas Types.Open <| LinkedGrid.axisGet fromAxis)) then
 
-                        let
-                            dummy1 = Debug.log "here1" []
-                        in
                         Nothing
 
                     else
@@ -91,9 +88,6 @@ push axisWithMoveAtOrigin =
 
                 -- treat boundary as stop
                 _ ->
-                    let
-                        dummy2 = Debug.log "here2" []
-                    in
                     Nothing
 
     in

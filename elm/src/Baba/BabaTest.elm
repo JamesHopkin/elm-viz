@@ -4,11 +4,9 @@ module Baba.BabaTest exposing ( Model, Msg, init, update, subscription,
 
 import List.Extra
 
-import Baba.Baba as Baba exposing ( countChars )
+import Baba.Baba as Baba
 import Baba.Cell exposing (..)
-import Baba.Grammar
 import Baba.Move exposing (..)
-import Baba.Rules as Rules exposing (..)
 import Baba.Types as Types
 import Baba.Util exposing (..)
 
@@ -274,7 +272,7 @@ makeRandomGrid chars =
         impl : List Char -> List String -> List String
         impl innerChars acc = case List.take randomGridSize innerChars of
             [] -> acc
-            block -> (String.fromList block) :: (impl (List.drop randomGridSize innerChars) acc)
+            block -> String.fromList block :: impl (List.drop randomGridSize innerChars) acc
     in
         LinkedGrid.fromLists emptyCell randomGridSize randomGridSize (stringListToCells (impl chars []))
 

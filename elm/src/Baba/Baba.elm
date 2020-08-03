@@ -7,7 +7,6 @@ import Bitwise
 import Dict exposing ( Dict )
 import Json.Decode as Decode
 import Browser.Events
-import List.Extra
 
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
 import Baba.Cell as Cell
@@ -108,7 +107,7 @@ turn forceTransform youDirection currentGrid =
     let
 
         -- rules
-        ( initialRules, gridWithUpToDateRules ) = applyRules currentGrid
+        ( _, gridWithUpToDateRules ) = applyRules currentGrid
 
         -- you
         ( numberOfYousMoved, afterYousMoved ) =

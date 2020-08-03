@@ -7,8 +7,6 @@ module Baba.LinkedGrid exposing ( LinkedGrid, toDebugString, Location, foldLocat
 
 import Array exposing ( Array )
 
-import Debug
-
 
 type LinkedGrid el = LinkedGrid el Int Int (Array (Array el))
 
@@ -54,21 +52,6 @@ toDebugString toString grid =
     in
         String.join "" <| foldLocations f [] grid
 
-toDebugStringOld : (el -> String) -> LinkedGrid el -> String
-toDebugStringOld toString grid = case grid of
-    LinkedGrid _ _ _ arrays ->
-        let
-
-            rowString row = 
-                Array.map toString row
-                    |> Array.toList
-                    |> String.join ""
-
-            rowStrings : List String
-            rowStrings = Array.foldr (rowString >> (::)) [] arrays
-
-        in
-            String.join "\n" rowStrings
 
 make empty width height =
     LinkedGrid empty width height
@@ -169,7 +152,6 @@ axisForward : Int -> Axis el -> Maybe (Axis el)
 axisForward offset axis = case axis of
     Axis (Location grid x y) direction ->
         let
-            ( width, height ) = getDimensions grid 
             ( newX, newY ) = applyOffset ( x, y ) offset direction
         in
         Maybe.map (\loc -> Axis loc direction) (at newX newY grid)
