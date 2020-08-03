@@ -75,16 +75,13 @@ for word in words:
 #[ "^", "all", "PredicateText All" ],
 data_out_out = []
 for (i,j) in zip(data, data_out):
+	x = "    ( '" + i[0] + "', " 
 	if i[2]:
-		x = "('" + i[0] + "'," 
-		x += "{text = '"+ i[2] + "', word ='" + i[1] 
-		x += "', glyph = { x = " + str(j[0]) + ", y = " + str(j[1]) + ", width = " + str(j[2]) + ", height = " + str(j[3]) + "}}"
-		x += ")"
+		x += "{text = "+ i[2] + ', word = "' + i[1] 
 	else:
-		x = "('" + i[0] + "'," 
-		x += "{text = '"+ "NounText (Noun '" + i[0] + "')" + "', word ='" + i[1] 
-		x += "', glyph = { x = " + str(j[0]) + ", y = " + str(j[1]) + ", width = " + str(j[2]) + ", height = " + str(j[3]) + "}}"
-		x += ")"
+		x += "{text = "+ "NounText (Noun '" + i[0] + "')" + ', word ="' + i[1] 
+	x += '", glyph = { x = ' + str(j[0]) + ", y = " + str(j[1]) + ", width = " + str(j[2]) + ", height = " + str(j[3]) + "}} "
+	x += ")"
 	data_out_out.append(x)
 
 with open(PATH_OUT, "w") as write_file:
