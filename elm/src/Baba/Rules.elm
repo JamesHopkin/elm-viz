@@ -114,7 +114,7 @@ ruleDebugString sense rule =
     in
     case rule of
         Is s r c -> String.join " " <| subjectAndRestrictions s r ++ [if sense then "is" else "is not", Types.complementDebugString c]
-        Link l s r o -> String.join " " <| subjectAndRestrictions s r ++ [Types.linkingWordDebugString l, Types.subjectDebugString o]
+        Link l s r o -> String.join " " <| subjectAndRestrictions s r ++ [Types.textDebugString (Types.LinkingWord l), Types.subjectDebugString o]
 
 getRestrictions : Rule -> List Grammar.Restriction
 getRestrictions rule = case rule of

@@ -101,11 +101,14 @@ renderConnectedSprite location obj s =
     renderNoAnimSprite sprite
 
 animatedSprites = Dict.fromList
-    [ ( 'n', ( 0, 0, 8 ) ) -- link
+    [ ( 'i', ( 0, 0, 8 ) ) -- link
     , ( 'a', ( 24 * 8, 0, 2 ) ) -- zelda
     ]
 
-getAnimatedSprite code = Dict.get code animatedSprites
+getNounSprite sprites noun = case noun of
+    Types.Noun c -> Dict.get c sprites
+
+getAnimatedSprite = getNounSprite animatedSprites
 
 instanceSprites = Dict.fromList
     [ ( 'e',    { x = 232, y = 328, width = 16, height = 16 } ) -- fence
@@ -117,26 +120,21 @@ instanceSprites = Dict.fromList
     , ( 'h',    { x = 96, y = 128, width = 24, height = 32 } ) -- sign
     ]
 
-getInstanceSprite code = Dict.get code instanceSprites
+getInstanceSprite = getNounSprite instanceSprites
 
 
-getTextSprite code = case Types.getTypeInfoByCode code of
-    Just info ->
-        let
+getTextSprite text =
+    let
+        bg =
+            case text of
+                Types.StativeText _ -> 
+                    2
 
-            bg =
-                case info.text of
-                    Types.StativeText _ -> 
-                        2
+                _ ->
+                    0
+    in
+    {bg = bg, sprite = (Types.getTextInfo text).glyph}
 
-                    _ ->
-                        0
-        in
-    
-        Just { bg = bg, sprite = info.glyph }
-
-    _ ->
-        Nothing
 
 renderTextBG = renderNoAnimSprite { x = 40, y = 160, width = 16, height = 16 } 1.0
 renderTextBG2 = renderNoAnimSprite { x = 88, y = 160, width = 16, height = 16 } 1.0
@@ -226,35 +224,39 @@ renderObject info =
         x = info.animX * cellDimension
         y = info.animY * cellDimension + 5
 
-        objChar = Cell.objectDebugChar info.obj
+        word = Cell.getObjectWord info.obj
 
     in
-        case getAnimatedSprite objChar of
-            Just animatedSprite ->
-                [curry3 renderSprite animatedSprite 
-                    (Cell.getObjectDirection info.obj) info.delta x y info.alpha info.spriteSheet]
+    case word of
+        Cell.Instance noun ->
 
-            _ ->
-                case getInstanceSprite objChar of
-                    Just instanceSprite ->
-                        if objChar == 'e' || objChar == 'b' then
-                            [renderConnectedSprite info.location info.obj instanceSprite 1.0 x y info.alpha info.spriteSheet]
-                        else
-                            [renderNoAnimSprite instanceSprite 1.0 x y info.alpha info.spriteSheet]
+            case getAnimatedSprite noun of
+                Just animatedSprite ->
+                    [curry3 renderSprite animatedSprite 
+                        (Cell.getObjectDirection info.obj) info.delta x y info.alpha info.spriteSheet]
 
-                    _ ->
-                        case getTextSprite objChar of
-                            Just { bg, sprite } ->
-                                [ (case bg of
-                                    0 -> renderTextBG
-                                    1 -> renderTextBG2
-                                    _ -> renderMessageBox
-                                  ) x y info.alpha info.spriteSheet
-                                , renderNoAnimSprite sprite 0.6 x y info.alpha info.glyphSheet
-                                ]
+                _ ->
+                    case ( noun, getInstanceSprite noun ) of
+                        ( Types.Noun objChar, Just instanceSprite ) ->
+                            if objChar == 'e' || objChar == 'b' then
+                                [renderConnectedSprite info.location info.obj instanceSprite 1.0 x y info.alpha info.spriteSheet]
+                            else
+                                [renderNoAnimSprite instanceSprite 1.0 x y info.alpha info.spriteSheet]
 
-                            _ ->
-                                [Canvas.text [gt, font] ( x - 8, y + 8 ) (String.fromChar objChar)]
+                        ( Types.Noun objChar, _ ) ->
+                            [Canvas.text [gt, font] ( x - 8, y + 8 ) (String.fromChar objChar)]
+
+        Cell.Text text ->
+            case getTextSprite text of
+                { bg, sprite } ->
+                    [ (case bg of
+                        0 -> renderTextBG
+                        1 -> renderTextBG2
+                        _ -> renderMessageBox
+                      ) x y info.alpha info.spriteSheet
+                    , renderNoAnimSprite sprite 0.6 x y info.alpha info.glyphSheet
+                    ]
+
 
 
 renderGrid spriteSheet glyphSheet dicts delta grid =

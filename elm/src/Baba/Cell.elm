@@ -2,7 +2,7 @@ module Baba.Cell exposing ( Object, Cell, Location, Grid, Axis, emptyCell, moveT
                             objectIs, objectIsAny, cellHas, cellHasAny, cellHasNoun, wordMatchesSubject, objectMatchesSubject,
                             firstText, firstComplement, firstSubject, firstStative, firstLinkingWord,
                             getObjectId, getObjectWord, getObjectDirection, getObjectFlags,
-                            makeObject, makeDirectedObject, makeTextObject, charToText,
+                            makeObject, makeDirectedObject, makeTextObject,
                             setObjectDirection, setObjectFlags, setObjectIs, setObjectWordAndFlags,
                             updateObjectInCell, flipDir, foldObjects,
                             objectDebugChar, cellDebugString, stringListToCells, mismatch,
@@ -398,7 +398,7 @@ objectKindDebugChar kind =
         Text (Types.Conjunction Types.And) -> '&'
         Text (Types.Conjunction Types.Not) -> '!'
         Text (Types.Restrictive Types.On) -> '_'
-        _ -> '@'
+        _ -> ','
 
 
 cellDebugString : Cell -> String
@@ -432,31 +432,6 @@ cellDebugString cell =
                     first :: second :: _ -> toString first ++ toString second
                     first :: _           -> toString first ++ " "
                     _ -> "· "
-
-charToText : Char -> Types.Text
-charToText c = case c of
-                    '<' -> Types.LinkingWord Types.Has
-                    '=' -> Types.LinkingWord Types.Is
-                    '&' -> Types.Conjunction Types.And
-                    '!' -> Types.Conjunction Types.Not
-                    '_' -> Types.Restrictive Types.On
-                    'K' -> Types.StativeText Types.Sink
-                    'L' -> Types.StativeText Types.Pull
-                    'M' -> Types.StativeText Types.Move
-                    'O' -> Types.StativeText Types.Hot
-                    'P' -> Types.StativeText Types.Push
-                    'R' -> Types.StativeText Types.Weak
-                    'S' -> Types.StativeText Types.Stop
-                    'T' -> Types.StativeText Types.Defeat
-                    'U' -> Types.StativeText Types.Open
-                    'V' -> Types.StativeText Types.Shut
-                    'W' -> Types.StativeText Types.Win
-                    'Y' -> Types.StativeText Types.You
-                    'X' -> Types.PredicateText Types.Text
-                    'Z' -> Types.StativeText Types.Melt
-
-                    _ ->
-                        Types.NounText (Types.Noun (Char.toLower c))
 
 nextIndex : Char -> Dict Char Int -> ( Int, Dict Char Int )
 nextIndex c indices =
@@ -508,10 +483,12 @@ stringListToCells rows =
                             makeDirectedObject id 'a' Left
 
                         _ ->
-                            if Char.isUpper c || List.member c (String.toList "=<&!_") then
-                                makeTextObject id (charToText c)
-                            else
-                                makeObject id c
+                            case Dict.get c Types.textByCode of
+                                Just text ->
+                                    makeTextObject id text
+
+                                _ ->
+                                    makeObject id c
                 in
                 ( newIndices, [newObject] :: outRow )
 

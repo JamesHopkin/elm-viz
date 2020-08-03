@@ -23,7 +23,7 @@ type alias Restriction =
 
 restrictionDebugString restr =
     let
-        str = Types.restrictiveDebugString restr.word ++ " " ++ Types.subjectDebugString restr.noun
+        str = Types.textDebugString (Types.Restrictive restr.word) ++ " " ++ Types.subjectDebugString restr.noun
     in
     if restr.sense then str else "not " ++ str
 

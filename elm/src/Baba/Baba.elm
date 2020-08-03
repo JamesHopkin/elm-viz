@@ -240,12 +240,12 @@ type alias Model =
 initialGridStr = """
  A eeeeeeee
  = e      e
- S e n  c e
+ S e i  c e
    e   C  e
 B=Ke E= c e
    e _    e
 eeee X &  eeee
-e     N d    e
+e     I d    e
 e  M  =  C=P e
 ebbb DY    L e
 ebbb   e F=W e
