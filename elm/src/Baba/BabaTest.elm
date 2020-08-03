@@ -22,6 +22,9 @@ allTests =
         , [ "@@@→",       " @@@→" ]
         ], Nothing )
 
+-- how to test A=B+... without relying on order of eval?
+    --, ( [ [ "A=B=Y"]])
+
         -- open/shut
     , ( [ [ "A=MA=UB=V", "A=MA=UB=V" ]
         , [ "→b",        "" ]

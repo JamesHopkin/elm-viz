@@ -176,10 +176,9 @@ flagsFor : List Stative -> Int
 flagsFor verbs = List.foldr (flagFor >> Bitwise.or) 0 verbs
 
 
-getTypeInfoByCode = Dict.fromList
-    [ ( 'A', {text = PredicateText All, word = "All", glyph = {x = 0, y = 0, width = 7, height = 16}} )
-    , ( 'B', {text = PredicateText Empty, word = "Empty", glyph = {x = 0, y = 0, width = 7, height = 16}} )
-    , ( 'P', {text = StativeText Push, word = "Push", glyph = {x = 0, y = 0, width = 7, height = 16}} )
-
-    , ( 'h', {text = NounText (Noun 'h'), word = "sign", glyph = {x = 0, y = 0, width = 7, height = 16}} )
+typeInfos = Dict.fromList
+    [
+    ('<',{text = LinkingWord Has, word ="has", glyph = { x = 0, y = 0, width = 18, height = 16}})
     ]
+
+getTypeInfoByCode code = Dict.get code typeInfos

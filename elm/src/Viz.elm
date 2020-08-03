@@ -163,6 +163,7 @@ view model =
       , tr [] [td [] [ text "e - fence"], td [] [],                    td [] [text "P - push"], td [] [ text "V - shut"]]
       ]
     , div [] (List.map text Baba.BabaTest.testResults)
+    , div [] [model.baba.undoStack |> List.length |> String.fromInt |> text]
     ]
     
 main : Program Flags Model Msg

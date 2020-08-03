@@ -19,11 +19,15 @@ import Color
 
 import Baba.Cell as Cell
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction(..) )
+import Baba.Types as Types
 import Baba.Util exposing (..)
 
 animDurationMillis = 350
 
-spritesLoader msg = loadFromImageUrl "images/blah.png" (msg << TextureLoaded)
+spriteLoaders msg =
+    [ loadFromImageUrl "images/blah.png" (msg << SpritesLoaded)
+    , loadFromImageUrl "images/test.png" (msg << GlyphsLoaded)
+    ]
 
 cellDimensionInt = 16
 cellDimension = toFloat cellDimensionInt
@@ -101,6 +105,8 @@ animatedSprites = Dict.fromList
     , ( 'a', ( 24 * 8, 0, 2 ) ) -- zelda
     ]
 
+getAnimatedSprite code = Dict.get code animatedSprites
+
 instanceSprites = Dict.fromList
     [ ( 'e',    { x = 232, y = 328, width = 16, height = 16 } ) -- fence
     , ( 'b',    { x = 232, y = 256, width = 16, height = 16 } ) -- water
@@ -111,24 +117,12 @@ instanceSprites = Dict.fromList
     , ( 'h',    { x = 96, y = 128, width = 24, height = 32 } ) -- sign
     ]
 
-textSprites = Dict.fromList
-    [ ( 'E',    { bg = 0, sprite = { x = 144, y = 208, width = 31, height = 16 } } ) -- fence
-    , ( 'B',    { bg = 1, sprite = { x = 0, y = 224, width = 32, height = 16 } } ) -- water
-    , ( 'C',    { bg = 0, sprite = { x = 72, y = 224, width = 26, height = 16 } } ) -- rock
-    , ( 'D',    { bg = 1, sprite = { x = 16, y = 208, width = 32, height = 16 } } ) -- shrub
-    , ( 'F',    { bg = 0, sprite = { x = 136, y = 224, width = 21, height = 16 } } ) -- key
-    , ( 'N',    { bg = 1, sprite = { x = 88, y = 208, width = 23, height = 16 } } ) -- link
-    , ( 'X',    { bg = 0, sprite = { x = 104, y = 224, width = 27, height = 16 } } ) -- text
-    , ( '=',    { bg = 1, sprite = { x = 0, y = 208, width = 11, height = 16 } } ) -- is
+getInstanceSprite code = Dict.get code instanceSprites
 
-    , ( 'K',    { bg = 2, sprite = { x = 40, y = 224, width = 23, height = 16 } } ) -- sink
-    , ( 'L',    { bg = 2, sprite = { x = 184, y = 224, width = 20, height = 16 } } ) -- pull
-    , ( 'M',    { bg = 2, sprite = { x = 208, y = 224, width = 28, height = 16 } } ) -- move
-    , ( 'P',    { bg = 2, sprite = { x = 56, y = 208, width = 26, height = 16 } } ) -- push
-    , ( 'S',    { bg = 2, sprite = { x = 184, y = 208, width = 26, height = 16 } } ) -- stop
-    , ( 'W',    { bg = 2, sprite = { x = 160, y = 224, width = 18, height = 16 } } ) -- win
-    , ( 'Y',    { bg = 2, sprite = { x = 120, y = 208, width = 21, height = 16 } } ) -- you
-    ]
+
+getTextSprite code =
+    Types.getTypeInfoByCode code
+        |> Maybe.map (\info -> { bg = 0, sprite = info.glyph })
 
 renderTextBG = renderNoAnimSprite { x = 40, y = 160, width = 16, height = 16 } 1.0
 renderTextBG2 = renderNoAnimSprite { x = 88, y = 160, width = 16, height = 16 } 1.0
@@ -151,11 +145,12 @@ setGrid grid model =
     }
 
 type Msg
-    = TextureLoaded (Maybe Texture.Texture)
+    = SpritesLoaded (Maybe Texture.Texture)
+    | GlyphsLoaded (Maybe Texture.Texture)
     | AnimationFrame Posix
 
 type alias Model =
-    { texture : Maybe Texture.Texture
+    { textures : List Texture.Texture
     , grid : Maybe Cell.Grid
     , previousGrid : Maybe Cell.Grid
     , lastAnimTime : Posix
@@ -164,7 +159,7 @@ type alias Model =
 
 init : Model
 init = 
-    { texture = Nothing
+    { textures = []
     , grid = Nothing
     , previousGrid = Nothing
     , lastAnimTime = Time.millisToPosix 0
@@ -173,8 +168,36 @@ init =
 
 update msg model =
     case msg of 
-        TextureLoaded texture ->
-            { model | texture = texture }
+        SpritesLoaded maybeTexture ->
+            case maybeTexture of
+                Just spritesImage ->
+                    { model | textures = spritesImage :: model.textures }
+
+                _ ->
+                    let
+                        logFail = Debug.log "texture" ["no sprites"]
+                    in
+                    model
+
+        GlyphsLoaded maybeTexture ->
+            case maybeTexture of
+                Just glyphImage ->
+                    let
+                        textures = case model.textures of
+                            sprites :: _ ->
+                                [sprites, glyphImage]
+
+                            _ ->
+                                [glyphImage]
+
+                    in
+                    { model | textures = textures }
+
+                _ ->
+                    let
+                        logFail = Debug.log "texture" ["no glyphs"]
+                    in
+                    model
 
         AnimationFrame time ->
             { model | lastAnimTime = time }
@@ -192,13 +215,13 @@ renderObject info =
         objChar = Cell.objectDebugChar info.obj
 
     in
-        case Dict.get objChar animatedSprites of
+        case getAnimatedSprite objChar of
             Just animatedSprite ->
                 [curry3 renderSprite animatedSprite 
                     (Cell.getObjectDirection info.obj) info.delta x y info.alpha info.spriteSheet]
 
             _ ->
-                case Dict.get objChar instanceSprites of
+                case getInstanceSprite objChar of
                     Just instanceSprite ->
                         if objChar == 'e' || objChar == 'b' then
                             [renderConnectedSprite info.location info.obj instanceSprite 1.0 x y info.alpha info.spriteSheet]
@@ -206,21 +229,21 @@ renderObject info =
                             [renderNoAnimSprite instanceSprite 1.0 x y info.alpha info.spriteSheet]
 
                     _ ->
-                        case Dict.get objChar textSprites of
+                        case getTextSprite objChar of
                             Just { bg, sprite } ->
                                 [ (case bg of
                                     0 -> renderTextBG
                                     1 -> renderTextBG2
                                     _ -> renderMessageBox
                                   ) x y info.alpha info.spriteSheet
-                                , renderNoAnimSprite sprite 0.6 x y info.alpha info.spriteSheet
+                                , renderNoAnimSprite sprite 0.6 x y info.alpha info.glyphSheet
                                 ]
 
                             _ ->
                                 [Canvas.text [gt, font] ( x - 8, y + 8 ) (String.fromChar objChar)]
 
 
-renderGrid spriteSheet dicts delta grid =
+renderGrid spriteSheet glyphSheet dicts delta grid =
     let
         foldFunc : ( Int, Int, Cell.Object ) -> List Canvas.Renderable -> List Canvas.Renderable
         foldFunc ( objX, objY, obj ) acc =
@@ -245,6 +268,7 @@ renderGrid spriteSheet dicts delta grid =
             in
             renderObject
                 { spriteSheet = spriteSheet
+                , glyphSheet = glyphSheet
                 , obj = obj
                 , delta = animDelta
                 , animX = animX
@@ -305,22 +329,23 @@ view msg model =
 
 
               { width = canvasWidth, height = canvasHeight
-              , textures = [spritesLoader msg]
+              , textures = spriteLoaders msg
               } [] 
               ( Canvas.shapes  
                     [Canvas.Settings.fill (Color.rgb (74.0 / 255.0) (156.0 / 255.0) (74.0 / 255.0))]
                     [Canvas.rect (0, 0) (toFloat canvasWidth) (toFloat canvasHeight)]
                 :: 
-                (case model.texture of
-                    Just texture ->
-                        renderGrid texture objectsInPreviousGrid delta grid
+                (case model.textures of
+                    sprites :: glyphs :: [] ->
+                        renderGrid sprites glyphs objectsInPreviousGrid delta grid
                         ++
                         (case objectsInPreviousGrid of
                             Just ( _, destroyed ) ->
                                 destroyed
                                     |> Dict.toList
                                     |> List.concatMap (\(_, ( x, y, obj )) -> renderObject
-                                        { spriteSheet = texture
+                                        { spriteSheet = sprites
+                                        , glyphSheet = glyphs
                                         , obj = obj
                                         , delta = 0
                                         , animX = toFloat x
