@@ -63,20 +63,34 @@ for word in words:
 	x+=8 #space between words
 
 
-data_out_out = []
+data_one = []
 for (i,j) in zip(data, data_out):
-	x = "    ( '" + i[0].upper() + "', " 
 	if i[2]:
-		x += "{text = "+ i[2] + ', word = "' + i[1] 
+		x = "    " + i[2] 
 	else:
-		x += "{text = "+ "NounText (Noun '" + i[0] + "')" + ', word ="' + i[1] 
-	x += '", glyph = { x = ' + str(j[0]) + ", y = " + str(j[1]) + ", width = " + str(j[2]) + ", height = " + str(j[3]) + "}} "
-	x += ")"
-	data_out_out.append(x)
+		x = "    NounText(Noun '" + i[0] + "')" 
+	x += " -> {char = '" + i[0].upper() + "'," + 'word ="' + i[1] 
+	x += '", glyph = { x = ' + str(j[0]) + ", y = " + str(j[1]) + ", width = " + str(j[2]) + ", height = " + str(j[3]) + "}}"
+	
+	data_one.append(x)
+
+data_out_out = (",\n").join(data_one)
+data_out_out += "textByCode = \nDict.fromList\n    [\n"
+
+data_two = []
+for (i,j) in zip(data, data_out):
+	x = "    ('" + i[0].upper() +"', "
+	if i[2]:
+		x += i[2] + ")"
+	else:
+		x += "NounText (Noun '" + i[0] + "') )"
+	data_two.append(x)
+
+data_out_out += (",\n").join(data_two)
+data_out_out += "\n]"
 
 with open(PATH_OUT, "w") as write_file:
-	write_file.write((",\n").join(data_out_out))
+	write_file.write(data_out_out)
 
 with open(os.path.join(ROOT, ATLAS_FILENAME), 'wb') as out_file:
 	target.save(out_file)
-
