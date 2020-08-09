@@ -40,7 +40,9 @@ floorf = floor >> toFloat
 -- probably pass this through to all render functions
 gt = transform [scale 2.0 2.0, translate cellDimension (cellDimension/2.0)]
 
+type alias SpriteFunc = Float -> Float -> Float -> Float -> Texture.Texture -> Canvas.Renderable
 
+renderSprite : Float -> Float -> Int -> Direction -> SpriteFunc
 renderSprite baseX baseY numFrames direction =
     let
         yoff = case direction of
@@ -50,13 +52,11 @@ renderSprite baseX baseY numFrames direction =
                     Down -> 96
 
         frame delta = Texture.sprite
-            { x = baseX + (if delta > 0.95 then 0 else spriteWidth * floorf (numFrames * delta))
+            { x = baseX + (if delta > 0.95 then 0 else spriteWidth * floorf (toFloat numFrames * delta))
             , y = baseY + yoff
             , width = spriteWidth
             , height = 32
             }
-
-
 
         render delta x y alpha spriteSheet =
             Canvas.texture
@@ -68,6 +68,10 @@ renderSprite baseX baseY numFrames direction =
     render
 
 
+
+type alias Box = { x: Float, y: Float, width: Float, height: Float }
+
+renderNoAnimSprite : Box -> SpriteFunc
 renderNoAnimSprite s scl x y alpha spriteSheet = Canvas.texture
     [gt, Canvas.Settings.Advanced.alpha alpha
     , transform (translate x y :: (if scl == 1.0 then 
@@ -76,10 +80,11 @@ renderNoAnimSprite s scl x y alpha spriteSheet = Canvas.texture
     ]
     ( -s.width / 2.0, -s.height / 2.0 ) (Texture.sprite s spriteSheet)
 
-renderConnectedSprite location obj s =
+renderConnectedSprite : Cell.Location -> Cell.Object -> Box -> SpriteFunc
+renderConnectedSprite loc obj s =
     let
-        sprite = case ( Cell.getObjectWord obj, location ) of
-            ( Cell.Instance noun, Just loc ) ->
+        sprite = case Cell.getObjectWord obj of
+            Cell.Instance noun ->
                 let
                     hasItemToInt m = case Maybe.map (LinkedGrid.getContents >> (Cell.cellHasNoun noun)) m of
                         Just True -> 1
@@ -99,6 +104,79 @@ renderConnectedSprite location obj s =
                 s
     in
     renderNoAnimSprite sprite
+
+
+{-
+
+   _
+ /   \ | / _ \ |
+ .   .   .   .
+
+-}
+
+hasWater = Cell.cellHasNoun (Types.Noun 'b')
+
+
+
+
+
+getWaterSpriteLocations : Int -> Int -> Cell.Location -> List ( Int, Int )
+getWaterSpriteLocations baseX baseY loc = 
+    let
+        relativeLocationHasWater f = f loc |> Maybe.map (LinkedGrid.getContents >> hasWater) |> Maybe.withDefault False
+        aboveHas = relativeLocationHasWater LinkedGrid.above
+        rightHas = relativeLocationHasWater LinkedGrid.right
+        belowHas = relativeLocationHasWater LinkedGrid.below
+        leftHas = relativeLocationHasWater LinkedGrid.left
+
+        boolToInt b = if b then 1 else 0
+
+        -- name in terms of top left, but pass in all four pairs
+        calc lh ah tlx tly = case ( lh, ah ) of
+            ( True, True ) ->
+                LinkedGrid.relativeAt tlx tly loc
+                    |> Maybe.map LinkedGrid.getContents
+                    |> Maybe.map hasWater
+                    |> Maybe.withDefault True
+                    |> boolToInt >> (+) 3
+
+            _ ->
+                boolToInt lh + 2 * boolToInt ah
+
+        xform y x = ( baseX + x * 8, baseY + y * 8 )
+
+    in
+    [ calc leftHas  aboveHas -1 -1 |> xform 0
+    , calc aboveHas rightHas  1 -1 |> xform 1
+    , calc rightHas belowHas  1  1 |> xform 2
+    , calc belowHas leftHas  -1  1 |> xform 3
+    ]
+    
+
+
+renderWater : Cell.Location -> Float -> Float -> Float -> Texture.Texture -> List Canvas.Renderable
+renderWater loc x y alpha spriteSheet = 
+    let
+        baseX = 0
+        baseY = 208
+
+        spriteLocs = getWaterSpriteLocations baseX baseY loc 
+
+        render ( rx, ry ) ( sx, sy ) = Canvas.texture [gt] ( rx, ry )
+            <| Texture.sprite { x = toFloat sx, y = toFloat sy, width = 8, height = 8 } spriteSheet
+
+    in
+    case spriteLocs of
+        tl :: tr :: br :: bl :: [] ->
+            [ render ( x - 8, y - 8 ) tl
+            , render ( x, y - 8 ) tr
+            , render ( x, y ) br
+            , render ( x - 8, y ) bl
+            ]
+
+        _ ->
+            []
+
 
 animatedSprites = Dict.fromList
     [ ( 'i', ( 0, 0, 8 ) ) -- link
@@ -227,36 +305,45 @@ renderObject info =
         word = Cell.getObjectWord info.obj
 
     in
-    case word of
-        Cell.Instance noun ->
+    case info.location of
+        Just location ->
+            case word of
+                Cell.Instance noun ->
 
-            case getAnimatedSprite noun of
-                Just animatedSprite ->
-                    [curry3 renderSprite animatedSprite 
-                        (Cell.getObjectDirection info.obj) info.delta x y info.alpha info.spriteSheet]
+                    case getAnimatedSprite noun of
+                        Just animatedSprite ->
+                            [curry3 renderSprite animatedSprite 
+                                (Cell.getObjectDirection info.obj) info.delta x y info.alpha info.spriteSheet]
 
-                _ ->
-                    case ( noun, getInstanceSprite noun ) of
-                        ( Types.Noun objChar, Just instanceSprite ) ->
-                            if objChar == 'e' || objChar == 'b' then
-                                [renderConnectedSprite info.location info.obj instanceSprite 1.0 x y info.alpha info.spriteSheet]
-                            else
-                                [renderNoAnimSprite instanceSprite 1.0 x y info.alpha info.spriteSheet]
+                        _ ->
+                            case ( noun, getInstanceSprite noun ) of
+                                ( Types.Noun objChar, Just instanceSprite ) ->
+                                    case objChar of
+                                        'b' ->
+                                            renderWater location x y info.alpha info.spriteSheet
 
-                        ( Types.Noun objChar, _ ) ->
-                            [Canvas.text [gt, font] ( x - 8, y + 8 ) (String.fromChar objChar)]
+                                        'e' ->
+                                            [renderConnectedSprite location info.obj instanceSprite 1.0 x y info.alpha info.spriteSheet]
 
-        Cell.Text text ->
-            case getTextSprite text of
-                { bg, sprite } ->
-                    [ (case bg of
-                        0 -> renderTextBG
-                        1 -> renderTextBG2
-                        _ -> renderMessageBox
-                      ) x y info.alpha info.spriteSheet
-                    , renderNoAnimSprite sprite 0.6 x y info.alpha info.glyphSheet
-                    ]
+                                        _ ->
+                                            [renderNoAnimSprite instanceSprite 1.0 x y info.alpha info.spriteSheet]
 
+                                ( Types.Noun objChar, _ ) ->
+                                    [Canvas.text [gt, font] ( x - 8, y + 8 ) (String.fromChar objChar)]
+
+                Cell.Text text ->
+                    case getTextSprite text of
+                        { bg, sprite } ->
+                            [ (case bg of
+                                0 -> renderTextBG
+                                1 -> renderTextBG2
+                                _ -> renderMessageBox
+                              ) x y info.alpha info.spriteSheet
+                            , renderNoAnimSprite sprite 0.6 x y info.alpha info.glyphSheet
+                            ]
+
+        _ ->
+            []
 
 
 renderGrid spriteSheet glyphSheet dicts delta grid =
@@ -359,7 +446,8 @@ view msg model =
                             Just ( _, destroyed ) ->
                                 destroyed
                                     |> Dict.toList
-                                    |> List.concatMap (\(_, ( x, y, obj )) -> renderObject
+                                    |> List.concatMap (\(_, ( x, y, obj )) ->
+                                        renderObject
                                         { spriteSheet = sprites
                                         , glyphSheet = glyphs
                                         , obj = obj

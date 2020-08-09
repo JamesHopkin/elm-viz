@@ -1,6 +1,6 @@
 module Baba.LinkedGrid exposing ( LinkedGrid, toDebugString, Location, foldLocations, getLocationCoordinates,
                                 make, Direction (..), flipDir, gridFromLocation, getDimensions,
-                                fromLists, at, getContents, setContents, above, right, below, left,
+                                fromLists, at, relativeAt, getContents, setContents, above, right, below, left,
                                 Axis, makeAxis, gridFromAxis, axisOrigin, axisGetAt, axisGet, axisSetAt, axisSet,
                                 axisForward, flipAxis, getAxisDirection,
                                 overlay )
@@ -78,6 +78,11 @@ at x y grid = case grid of
             Nothing
         else
             Just (Location grid x y)
+
+relativeAt : Int -> Int -> Location el -> Maybe (Location el)
+relativeAt x y loc = case loc of
+    Location grid locx locy ->
+        at (locx + x) (locy + y) grid 
 
 getContents : Location el -> el
 getContents loc = case loc of

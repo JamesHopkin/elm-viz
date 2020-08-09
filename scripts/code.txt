@@ -25,15 +25,15 @@
     StativeText You -> {char = 'Y',word ="You", glyph = { x = 232, y = 64, width = 19, height = 16}},
     PredicateText Text -> {char = 'X',word ="text", glyph = { x = 0, y = 96, width = 25, height = 16}},
     StativeText Melt -> {char = 'Z',word ="Melt", glyph = { x = 33, y = 96, width = 24, height = 16}},
-    NounText(Noun 'A') -> {char = 'a',word ="Zelda", glyph = { x = 65, y = 96, width = 29, height = 16}},
-    NounText(Noun 'B') -> {char = 'b',word ="Water", glyph = { x = 102, y = 96, width = 30, height = 16}},
-    NounText(Noun 'C') -> {char = 'c',word ="Rock", glyph = { x = 140, y = 96, width = 24, height = 16}},
-    NounText(Noun 'D') -> {char = 'd',word ="Shrub", glyph = { x = 172, y = 96, width = 29, height = 16}},
-    NounText(Noun 'E') -> {char = 'e',word ="Fence", glyph = { x = 209, y = 96, width = 30, height = 16}},
-    NounText(Noun 'F') -> {char = 'f',word ="Key", glyph = { x = 0, y = 128, width = 19, height = 16}},
-    NounText(Noun 'G') -> {char = 'g',word ="Statue", glyph = { x = 27, y = 128, width = 36, height = 16}},
-    NounText(Noun 'H') -> {char = 'h',word ="Sign", glyph = { x = 71, y = 128, width = 21, height = 16}},
-    NounText(Noun 'I') -> {char = 'i',word ="Link", glyph = { x = 100, y = 128, width = 21, height = 16}}textByCode = 
+    NounText(Noun 'a') -> {char = 'A',word ="Zelda", glyph = { x = 65, y = 96, width = 29, height = 16}},
+    NounText(Noun 'b') -> {char = 'B',word ="Water", glyph = { x = 102, y = 96, width = 30, height = 16}},
+    NounText(Noun 'c') -> {char = 'C',word ="Rock", glyph = { x = 140, y = 96, width = 24, height = 16}},
+    NounText(Noun 'd') -> {char = 'D',word ="Shrub", glyph = { x = 172, y = 96, width = 29, height = 16}},
+    NounText(Noun 'e') -> {char = 'E',word ="Fence", glyph = { x = 209, y = 96, width = 30, height = 16}},
+    NounText(Noun 'f') -> {char = 'F',word ="Key", glyph = { x = 0, y = 128, width = 19, height = 16}},
+    NounText(Noun 'g') -> {char = 'G',word ="Statue", glyph = { x = 27, y = 128, width = 36, height = 16}},
+    NounText(Noun 'h') -> {char = 'H',word ="Sign", glyph = { x = 71, y = 128, width = 21, height = 16}},
+    NounText(Noun 'i') -> {char = 'I',word ="Link", glyph = { x = 100, y = 128, width = 21, height = 16}}textByCode = 
 Dict.fromList
     [
     ('<', LinkingWord Has),
@@ -63,13 +63,13 @@ Dict.fromList
     ('Y', StativeText You),
     ('X', PredicateText Text),
     ('Z', StativeText Melt),
-    ('a', NounText (Noun 'A') ),
-    ('b', NounText (Noun 'B') ),
-    ('c', NounText (Noun 'C') ),
-    ('d', NounText (Noun 'D') ),
-    ('e', NounText (Noun 'E') ),
-    ('f', NounText (Noun 'F') ),
-    ('g', NounText (Noun 'G') ),
-    ('h', NounText (Noun 'H') ),
-    ('i', NounText (Noun 'I') )
+    ('A', NounText (Noun 'a') ),
+    ('B', NounText (Noun 'b') ),
+    ('C', NounText (Noun 'c') ),
+    ('D', NounText (Noun 'd') ),
+    ('E', NounText (Noun 'e') ),
+    ('F', NounText (Noun 'f') ),
+    ('G', NounText (Noun 'g') ),
+    ('H', NounText (Noun 'h') ),
+    ('I', NounText (Noun 'i') )
 ]

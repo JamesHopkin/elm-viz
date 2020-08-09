@@ -1,7 +1,6 @@
 module Baba.Destroy exposing ( doDestroys )
 
 import Bitwise
-import Debug
 
 import Baba.Cell as Cell exposing ( Cell, Grid, Location )
 import Baba.LinkedGrid as LinkedGrid exposing ( Direction (..) )
